@@ -26,7 +26,7 @@ Gunakan cara ini jika Anda ingin melakukan kustomisasi kode secara cepat.
 ### 2. Langkah Build
 Buka terminal/CMD, masuk ke folder project:
 ```bash
-cd frontend-mobile
+cd frontend_mobile
 ```
 
 Jalankan perintah ambil library:

@@ -27,21 +27,21 @@ jobs:
 
       - name: Initialize Project Platforms
         run: |
-          cd frontend-mobile
+          cd frontend_mobile
           flutter create . --platforms=android --org com.qandang.app
 
       - name: Install Dependencies
         run: |
-          cd frontend-mobile
+          cd frontend_mobile
           flutter pub get
 
       - name: Build APK
         run: |
-          cd frontend-mobile
+          cd frontend_mobile
           flutter build apk --release
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: qandang-release-apk
-          path: frontend-mobile/build/app/outputs/flutter-apk/app-release.apk
+          path: frontend_mobile/build/app/outputs/flutter-apk/app-release.apk
