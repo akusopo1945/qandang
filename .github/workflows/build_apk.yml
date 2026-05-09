@@ -29,6 +29,8 @@ jobs:
         run: |
           cd frontend_mobile
           flutter create . --platforms=android --org com.qandang.app
+          # Patch minSdkVersion from 19 to 21 to support mobile_scanner
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
 
       - name: Install Dependencies
         run: |
