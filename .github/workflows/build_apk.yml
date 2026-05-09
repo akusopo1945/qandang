@@ -22,8 +22,13 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0' # Stable version
+          flutter-version: '3.19.0'
           channel: 'stable'
+
+      - name: Initialize Project Platforms
+        run: |
+          cd frontend-mobile
+          flutter create . --platforms=android --org com.qandang.app
 
       - name: Install Dependencies
         run: |
