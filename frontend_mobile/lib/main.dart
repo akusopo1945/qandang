@@ -417,18 +417,24 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
 
   _fetchGoat() async {
     try {
-      // In real scenario, endpoint would be /goats/qr/{code}
-      final res = await ApiService.get('/goats'); 
+      final res = await ApiService.get('/goats/${widget.qrCode}'); 
       if (res.statusCode == 200) {
-        final List goats = jsonDecode(res.body);
-        // Simulate finding the goat by QR code (or just take the first one for demo)
+        final Map<String, dynamic> goat = jsonDecode(res.body);
         setState(() {
-          _goatData = goats.isNotEmpty ? goats.first : null;
+          _goatData = goat;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _goatData = null;
           _loading = false;
         });
       }
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _goatData = null;
+        _loading = false;
+      });
     }
   }
 
@@ -446,25 +452,57 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
           Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 24),
           if (_loading)
-            const CircularProgressIndicator()
+            const Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Mencari data kambing...'),
+              ],
+            )
           else if (_goatData == null)
-            const Text('Data Kambing Tidak Ditemukan', style: TextStyle(fontWeight: FontWeight.bold))
+            Column(
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text('Data Kambing Tidak Ditemukan', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('QR: ${widget.qrCode}', style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 24),
+                ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('TUTUP')),
+              ],
+            )
           else ...[
             Row(
               children: [
-                const CircleAvatar(radius: 40, child: Icon(Icons.pets, size: 40)),
+                CircleAvatar(
+                  radius: 40, 
+                  backgroundColor: const Color(0xFF4A6741).withOpacity(0.1),
+                  child: const Icon(Icons.pets, size: 40, color: Color(0xFF4A6741))
+                ),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(_goatData!['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      Text('ID: ${widget.qrCode}', style: const TextStyle(color: Colors.grey)),
+                      Text('QR: ${widget.qrCode}', style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: const Text('STATUS: SEHAT', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                        decoration: BoxDecoration(
+                          color: (_goatData!['health_status'] ?? 'healthy').toString().toLowerCase() == 'healthy' 
+                            ? Colors.green.withOpacity(0.1) 
+                            : Colors.orange.withOpacity(0.1), 
+                          borderRadius: BorderRadius.circular(8)
+                        ),
+                        child: Text(
+                          'STATUS: ${(_goatData!['health_status'] ?? 'SEHAT').toString().toUpperCase()}', 
+                          style: TextStyle(
+                            color: (_goatData!['health_status'] ?? 'healthy').toString().toLowerCase() == 'healthy' ? Colors.green : Colors.orange, 
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 12
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -475,9 +513,9 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMiniStat('Berat', '25kg', Icons.monitor_weight),
-                _buildMiniStat('Umur', '1.5 thn', Icons.calendar_today),
-                _buildMiniStat('Jenis', 'PE', Icons.category),
+                _buildMiniStat('Berat', '${_goatData!['weight'] ?? '-'} kg', Icons.monitor_weight),
+                _buildMiniStat('Jenis', _goatData!['breed'] ?? '-', Icons.category),
+                _buildMiniStat('Kelamin', _goatData!['gender'] == 'male' ? 'Jantan' : 'Betina', Icons.wc),
               ],
             ),
             const SizedBox(height: 32),
@@ -486,14 +524,23 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text('TUTUP'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A6741), foregroundColor: Colors.white),
+                    onPressed: () {
+                      // Navigate to full details (Next step)
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A6741), 
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text('LIHAT DETAIL'),
                   ),
                 ),
