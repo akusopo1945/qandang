@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-// Note: mobile_scanner used for QR scanning logic
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 void main() {
   runApp(const QandangApp());
@@ -16,9 +16,11 @@ class QandangApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Qandang',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, primary: const Color(0xFF4A6741)),
         useMaterial3: true,
+        fontFamily: 'sans-serif',
       ),
       home: const AuthWrapper(),
     );
@@ -139,15 +141,24 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.grass, size: 80, color: Colors.green),
-            const Text('QANDANG', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green)),
+            const Icon(Icons.grass, size: 80, color: Color(0xFF4A6741)),
+            const Text('QANDANG', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF4A6741))),
             const SizedBox(height: 40),
             TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
             TextField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
             const SizedBox(height: 40),
             _loading 
               ? const CircularProgressIndicator()
-              : ElevatedButton(onPressed: _login, child: const Text('MASUK')),
+              : ElevatedButton(
+                  onPressed: _login, 
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A6741),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('MASUK'),
+                ),
           ],
         ),
       ),
@@ -174,12 +185,19 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
+        selectedItemColor: const Color(0xFF4A6741),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Ternak'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
+          BottomNavigationBarItem(icon: Icon(Icons.pets_outlined), activeIcon: Icon(Icons.pets), label: 'Ternak'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QRScannerPage())),
+        backgroundColor: const Color(0xFF4A6741),
+        child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
@@ -191,44 +209,311 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Qandang Dashboard')),
+      appBar: AppBar(
+        title: const Text('Qandang', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildActionCard(context, 'SCAN QR KAMBING', Icons.qr_code_scanner, Colors.green, () {
-              // Placeholder for scanner trigger
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membuka Kamera...')));
-            }),
-            const SizedBox(height: 16),
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.info),
-                title: Text('Tips Hari Ini'),
-                subtitle: Text('Pastikan sanitasi kandang terjaga setelah hujan.'),
-              ),
+            const Text('Halo, Peternak! 👋', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text('Bagaimana kondisi kandang hari ini?', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 24),
+            
+            // Stats Grid
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.5,
+              children: [
+                _buildStatCard('Total Ternak', '42', Icons.pets, Colors.blue),
+                _buildStatCard('Kesehatan', 'Baik', Icons.health_and_safety, Colors.green),
+              ],
             ),
+            
+            const SizedBox(height: 24),
+            _buildActionCard(context, 'Mulai Scan QR', 'Arahkan kamera ke tag telinga kambing', Icons.qr_code_scanner, const Color(0xFF4A6741), () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const QRScannerPage()));
+            }),
+            
+            const SizedBox(height: 24),
+            const Text('Aktivitas Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _buildRecentActivity('Scan Kambing #A12', 'Baru saja', Icons.qr_code),
+            _buildRecentActivity('Catat Berat Kambing #B05', '2 jam yang lalu', Icons.monitor_weight),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionCard(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-        child: Column(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [color, color.withOpacity(0.8)]),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
+        ),
+        child: Row(
           children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                ],
+              ),
+            ),
             Icon(icon, size: 48, color: Colors.white),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRecentActivity(String title, String time, IconData icon) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF4A6741)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(time, style: const TextStyle(fontSize: 12)),
+        trailing: const Icon(Icons.chevron_right, size: 16),
+      ),
+    );
+  }
+}
+
+// --- QR Scanner Page ---
+class QRScannerPage extends StatefulWidget {
+  const QRScannerPage({super.key});
+
+  @override
+  State<QRScannerPage> createState() => _QRScannerPageState();
+}
+
+class _QRScannerPageState extends State<QRScannerPage> {
+  bool _isScanning = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scan QR Ternak'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          MobileScanner(
+            onDetect: (capture) {
+              if (!_isScanning) return;
+              final List<Barcode> barcodes = capture.barcodes;
+              for (final barcode in barcodes) {
+                if (barcode.rawValue != null) {
+                  setState(() => _isScanning = false);
+                  _onQRCodeScanned(barcode.rawValue!);
+                  break;
+                }
+              }
+            },
+          ),
+          // Custom Overlay
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 2),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 0, left: 0,
+                    child: Container(width: 40, height: 40, decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.green, width: 4), left: BorderSide(color: Colors.green, width: 4)), borderRadius: BorderRadius.only(topLeft: Radius.circular(24)))),
+                  ),
+                  // ... other corners
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            bottom: 100,
+            left: 0, right: 0,
+            child: Center(child: Text('Arahkan kamera ke QR Code', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onQRCodeScanned(String code) async {
+    // Show loading dialog
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _QuickInfoBottomSheet(qrCode: code),
+    ).then((_) => setState(() => _isScanning = true));
+  }
+}
+
+// --- Quick Info Bottom Sheet ---
+class _QuickInfoBottomSheet extends StatefulWidget {
+  final String qrCode;
+  const _QuickInfoBottomSheet({required this.qrCode});
+
+  @override
+  State<_QuickInfoBottomSheet> createState() => _QuickInfoBottomSheetState();
+}
+
+class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
+  bool _loading = true;
+  Map<String, dynamic>? _goatData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGoat();
+  }
+
+  _fetchGoat() async {
+    try {
+      // In real scenario, endpoint would be /goats/qr/{code}
+      final res = await ApiService.get('/goats'); 
+      if (res.statusCode == 200) {
+        final List goats = jsonDecode(res.body);
+        // Simulate finding the goat by QR code (or just take the first one for demo)
+        setState(() {
+          _goatData = goats.isNotEmpty ? goats.first : null;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 24),
+          if (_loading)
+            const CircularProgressIndicator()
+          else if (_goatData == null)
+            const Text('Data Kambing Tidak Ditemukan', style: TextStyle(fontWeight: FontWeight.bold))
+          else ...[
+            Row(
+              children: [
+                const CircleAvatar(radius: 40, child: Icon(Icons.pets, size: 40)),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_goatData!['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                      Text('ID: ${widget.qrCode}', style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, py: 4),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: const Text('STATUS: SEHAT', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildMiniStat('Berat', '25kg', Icons.monitor_weight),
+                _buildMiniStat('Umur', '1.5 thn', Icons.calendar_today),
+                _buildMiniStat('Jenis', 'PE', Icons.category),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('TUTUP'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A6741), foregroundColor: Colors.white),
+                    child: const Text('LIHAT DETAIL'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
     );
   }
 }
@@ -267,15 +552,26 @@ class _GoatListPageState extends State<GoatListPage> {
           if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
           final goats = snapshot.data ?? [];
           return ListView.builder(
+            padding: const EdgeInsets.all(12),
             itemCount: goats.length,
             itemBuilder: (context, i) {
               final goat = goats[i];
-              return ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.pets)),
-                title: Text(goat['name']),
-                subtitle: Text('${goat['breed']} - ${goat['gender']}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade100)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(12),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: const Color(0xFF4A6741).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.pets, color: Color(0xFF4A6741)),
+                  ),
+                  title: Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${goat['breed']} • ${goat['gender']}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {},
+                ),
               );
             },
           );
@@ -293,15 +589,31 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.clear();
-            if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-          child: const Text('LOGOUT'),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const CircleAvatar(radius: 50, child: Icon(Icons.person, size: 50)),
+            const SizedBox(height: 16),
+            const Text('Peternak Qandang', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('peternak@qandang.com', style: TextStyle(color: Colors.grey)),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade50,
+                foregroundColor: Colors.red,
+                elevation: 0,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('LOGOUT'),
+            ),
+          ],
         ),
       ),
     );
