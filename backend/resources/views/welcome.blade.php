@@ -228,7 +228,7 @@
                         </div>
                         <div>
                             <div class="text-sm font-bold text-[#6b5e51] uppercase tracking-wider mb-1">WhatsApp</div>
-                            <div class="text-xl font-extrabold text-[#2d241e]">+62 812-3456-7890</div>
+                            <div class="text-xl font-extrabold text-[#2d241e]">+62 812-4917-6420</div>
                         </div>
                     </div>
 
