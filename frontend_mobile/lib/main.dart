@@ -438,10 +438,39 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
     }
   }
 
+  final _weightController = TextEditingController();
+  bool _saving = false;
+
+  _saveWeight() async {
+    if (_weightController.text.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      final res = await ApiService.post('/goats/${_goatData!['id']}/weight', {
+        'weight': double.parse(_weightController.text),
+        'date_recorded': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'note': 'Input via Mobile Quick Scan',
+      });
+
+      if (res.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Berat berhasil dicatat! 🐐⚖️')));
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mencatat: $e')));
+    } finally {
+      setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.only(
+        left: 24, right: 24, top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -475,79 +504,75 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 40, 
+                  radius: 35, 
                   backgroundColor: const Color(0xFF4A6741).withOpacity(0.1),
-                  child: const Icon(Icons.pets, size: 40, color: Color(0xFF4A6741))
+                  child: const Icon(Icons.pets, size: 30, color: Color(0xFF4A6741))
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_goatData!['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      Text('QR: ${widget.qrCode}', style: const TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (_goatData!['health_status'] ?? 'healthy').toString().toLowerCase() == 'healthy' 
-                            ? Colors.green.withOpacity(0.1) 
-                            : Colors.orange.withOpacity(0.1), 
-                          borderRadius: BorderRadius.circular(8)
-                        ),
-                        child: Text(
-                          'STATUS: ${(_goatData!['health_status'] ?? 'SEHAT').toString().toUpperCase()}', 
-                          style: TextStyle(
-                            color: (_goatData!['health_status'] ?? 'healthy').toString().toLowerCase() == 'healthy' ? Colors.green : Colors.orange, 
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 12
-                          ),
-                        ),
-                      ),
+                      Text(_goatData!['name'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text('QR: ${widget.qrCode}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const Divider(height: 32),
+            const Text('CATAT BERAT BARU', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _weightController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'Masukkan berat (kg)',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      prefixIcon: const Icon(Icons.monitor_weight_outlined),
+                      suffixText: 'kg',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _saving 
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _saveWeight,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A6741),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('SIMPAN'),
+                    ),
               ],
             ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMiniStat('Berat', '${_goatData!['weight'] ?? '-'} kg', Icons.monitor_weight),
+                _buildMiniStat('Terakhir', '${_goatData!['weight'] ?? '-'} kg', Icons.history),
                 _buildMiniStat('Jenis', _goatData!['breed'] ?? '-', Icons.category),
                 _buildMiniStat('Kelamin', _goatData!['gender'] == 'male' ? 'Jantan' : 'Betina', Icons.wc),
               ],
             ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('TUTUP'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Navigate to full details (Next step)
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A6741), 
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('LIHAT DETAIL'),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('BATAL', style: TextStyle(color: Colors.grey)),
+              ),
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
         ],
       ),
     );
