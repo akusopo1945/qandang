@@ -28,20 +28,21 @@ jobs:
       - name: Initialize Project Platforms
         run: |
           cd frontend_mobile
-          flutter create . --platforms=android --org com.qandang.app
+          flutter create . --platforms=android,ios --org com.qandang.app
+          flutter pub get
           # Patch minSdkVersion from 19 to 21 to support mobile_scanner
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
 
       - name: Generate Icons and Splash
         run: |
           cd frontend_mobile
-          flutter pub run flutter_launcher_icons
-          flutter pub run flutter_native_splash:create
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
 
       - name: Build APK
         run: |
           cd frontend_mobile
-          flutter build apk --release --project-name=Qandang
+          flutter build apk --release
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
