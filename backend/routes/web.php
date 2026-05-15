@@ -3,5 +3,9 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/admin');
+    return view('welcome');
+});
+
+Route::get('/get-started', function () {
+    return view('register');
 });

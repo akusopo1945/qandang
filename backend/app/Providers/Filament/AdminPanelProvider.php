@@ -27,9 +27,13 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->registration()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => '#4a6741', // Hunter Green
+                'gray' => Color::Stone,
             ])
+            ->brandName('Qandang')
+            ->favicon(asset('favicon.ico'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -53,6 +57,17 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => '
+                    <meta property="og:title" content="Qandang - Smart Livestock Monitoring">
+                    <meta property="og:description" content="Platform smart farming untuk monitoring ternak kambing digital menggunakan QR Code.">
+                    <meta property="og:image" content="' . asset('images/og-image.jpg') . '">
+                    <meta property="og:url" content="' . config('app.url') . '">
+                    <meta property="og:type" content="website">
+                    <meta name="twitter:card" content="summary_large_image">
+                ',
+            );
     }
 }

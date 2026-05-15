@@ -2,7 +2,7 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
-const PORT = 4500;
+const PORT = 4501;
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -12,7 +12,7 @@ app.use((req, res, next) => {
 
 // Proxy for AI Service
 app.use('/ai', createProxyMiddleware({
-    target: 'http://localhost:8500',
+    target: 'http://localhost:8501',
     changeOrigin: true,
     pathRewrite: {
         '^/ai': '',
@@ -21,7 +21,7 @@ app.use('/ai', createProxyMiddleware({
 
 // Proxy for Backend (API, Admin, and Web)
 app.use('/', createProxyMiddleware({
-    target: 'http://localhost:8000',
+    target: 'http://localhost:8001',
     changeOrigin: true,
     filter: (pathname) => {
         // Exclude /ai as it's handled above
