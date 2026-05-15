@@ -29,9 +29,11 @@ jobs:
         run: |
           cd frontend_mobile
           flutter create . --platforms=android,ios --org com.qandang.app
-          flutter pub get
           # Patch minSdkVersion from 19 to 21 to support mobile_scanner
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+          # Patch Kotlin version to 1.9.22 for compatibility with Flutter 3.24.0
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.22"/g' android/build.gradle
+          flutter pub get
 
       - name: Generate Icons and Splash
         run: |
