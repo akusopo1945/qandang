@@ -136,6 +136,12 @@ class GoatResource extends Resource
                             ->persistent()
                             ->send();
                     }),
+                Tables\Actions\Action::make('downloadQr')
+                    ->label('Download QR')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn (Goat $record): string => route('qr.download', $record))
+                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

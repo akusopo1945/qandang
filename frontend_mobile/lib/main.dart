@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:vibration/vibration.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 void main() {
   runApp(const QandangApp());
@@ -386,6 +388,11 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   void _onQRCodeScanned(String code) async {
+    // Feedback getar
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(duration: 100);
+    }
+
     // Show loading dialog
     showModalBottomSheet(
       context: context,
@@ -555,10 +562,11 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
               ],
             ),
             const SizedBox(height: 24),
+            _buildGrowthChart(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMiniStat('Terakhir', '${_goatData!['weight'] ?? '-'} kg', Icons.history),
+                _buildMiniStat('Terakhir', '${_goatData!['weight'] ?? (_goatData!['weight_logs']?.isNotEmpty == true ? _goatData!['weight_logs'].last['weight'] : '-')} kg', Icons.history),
                 _buildMiniStat('Jenis', _goatData!['breed'] ?? '-', Icons.category),
                 _buildMiniStat('Kelamin', _goatData!['gender'] == 'male' ? 'Jantan' : 'Betina', Icons.wc),
               ],
@@ -575,6 +583,47 @@ class _QuickInfoBottomSheetState extends State<_QuickInfoBottomSheet> {
           const SizedBox(height: 10),
         ],
       ),
+    );
+  }
+
+  Widget _buildGrowthChart() {
+    final logs = _goatData!['weight_logs'] as List<dynamic>? ?? [];
+    if (logs.isEmpty) return const SizedBox.shrink();
+
+    final sortedLogs = List.from(logs);
+    sortedLogs.sort((a, b) => a['date_recorded'].compareTo(b['date_recorded']));
+    final recentLogs = sortedLogs.length > 7 ? sortedLogs.sublist(sortedLogs.length - 7) : sortedLogs;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('TREN PERTUMBUHAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 120,
+          child: LineChart(
+            LineChartData(
+              gridData: const FlGridData(show: false),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: recentLogs.asMap().entries.map((e) {
+                    return FlSpot(e.key.toDouble(), double.parse(e.value['weight'].toString()));
+                  }).toList(),
+                  isCurved: true,
+                  color: const Color(0xFF4A6741),
+                  barWidth: 4,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: true),
+                  belowBarData: BarAreaData(show: true, color: const Color(0xFF4A6741).withOpacity(0.1)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
