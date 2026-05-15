@@ -1,8 +1,22 @@
 # 🐐 Qandang - Smart Livestock Monitoring System
 
+[![Build Qandang APK](https://github.com/akusopo1945/qandang/actions/workflows/build_apk.yml/badge.svg)](https://github.com/akusopo1945/qandang/actions/workflows/build_apk.yml)
+
 ![Qandang Banner](backend/public/images/og-image.jpg)
 
 **Qandang** is a modern Smart Farming platform designed for digital goat livestock monitoring using QR Codes and IoT integration. It helps farmers track growth, health records, and barn environments in real-time.
+
+---
+
+## 📱 Mobile App (APK)
+
+Aplikasi mobile dibangun secara otomatis menggunakan GitHub Actions. 
+
+**Cara Download APK:**
+1. Pergi ke tab **[Actions](https://github.com/akusopo1945/qandang/actions)** di repository ini.
+2. Klik pada workflow run terbaru yang berwarna hijau (sukses).
+3. Scroll ke bawah ke bagian **Artifacts**.
+4. Download file **qandang-release-apk**.
 
 ---
 
