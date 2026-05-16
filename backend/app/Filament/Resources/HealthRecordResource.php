@@ -60,6 +60,12 @@ class HealthRecordResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->label('Keterangan/Resep')
                     ->columnSpanFull(),
+                Forms\Components\FileUpload::make('image')
+                    ->image()
+                    ->imageEditor()
+                    ->directory('health-records')
+                    ->label('Foto Dokumentasi')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -67,6 +73,10 @@ class HealthRecordResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Foto')
+                    ->disk('public')
+                    ->square(),
                 Tables\Columns\TextColumn::make('goat.name')
                     ->label('Kambing')
                     ->sortable()

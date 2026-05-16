@@ -14,20 +14,28 @@ class TemperatureChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $data = SensorData::latest()->take(30)->get()->reverse();
+        $data = SensorData::where('created_at', '>=', now()->subHours(2))
+            ->selectRaw('
+                floor(extract(epoch from created_at) / 300) as timeframe,
+                AVG(temperature) as avg_temp,
+                MAX(created_at) as latest_time
+            ')
+            ->groupBy('timeframe')
+            ->orderBy('timeframe', 'asc')
+            ->get();
 
         return [
             'datasets' => [
                 [
                     'label' => 'Suhu (°C)',
-                    'data' => $data->pluck('temperature')->toArray(),
+                    'data' => $data->pluck('avg_temp')->map(fn($v) => round($v, 1))->toArray(),
                     'borderColor' => '#ef4444',
                     'fill' => 'start',
                     'backgroundColor' => 'rgba(239, 68, 68, 0.1)',
                     'tension' => 0.4,
                 ],
             ],
-            'labels' => $data->pluck('created_at')->map(fn($date) => $date->format('H:i'))->toArray(),
+            'labels' => $data->pluck('latest_time')->map(fn($date) => \Carbon\Carbon::parse($date)->format('H:i'))->toArray(),
         ];
     }
 

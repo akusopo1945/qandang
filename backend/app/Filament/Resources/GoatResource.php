@@ -31,14 +31,22 @@ class GoatResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Informasi Dasar')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Nama Kambing')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('qr_code')
-                            ->label('Kode QR / ID')
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+                        Forms\Components\FileUpload::make('image')
+                            ->image()
+                            ->imageEditor()
+                            ->directory('goats')
+                            ->label('Foto Kambing')
+                            ->columnSpan(1),
+                        Forms\Components\Group::make([
+                            Forms\Components\TextInput::make('name')
+                                ->label('Nama Kambing')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('qr_code')
+                                ->label('Kode QR / ID')
+                                ->unique(ignoreRecord: true)
+                                ->maxLength(255),
+                        ])->columnSpan(1)->columns(1),
                         Forms\Components\Select::make('gender')
                             ->label('Jenis Kelamin')
                             ->options([
@@ -71,6 +79,10 @@ class GoatResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Foto')
+                    ->circular()
+                    ->disk('public'),
                 Tables\Columns\TextColumn::make('qr_code')
                     ->label('Kode QR')
                     ->searchable()

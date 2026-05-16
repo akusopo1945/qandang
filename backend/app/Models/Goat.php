@@ -16,6 +16,7 @@ class Goat extends Model
         'description',
         'dam_id',
         'sire_id',
+        'image',
     ];
 
     public function dam(): \Illuminate\Database\Eloquent\Relations\BelongsTo

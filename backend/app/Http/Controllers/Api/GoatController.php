@@ -22,9 +22,19 @@ class GoatController extends Controller
             'gender' => 'required|string',
             'dam_id' => 'nullable|exists:goats,id',
             'sire_id' => 'nullable|exists:goats,id',
+            'image' => 'nullable|string', // Base64 from mobile
         ]);
 
-        $goat = Goat::create($request->all());
+        $data = $request->all();
+
+        if ($request->filled('image') && !str_contains($request->image, '/')) {
+            $image = $request->image;
+            $imageName = 'mobile_' . time() . '.jpg';
+            \Illuminate\Support\Facades\Storage::disk('public')->put('goats/' . $imageName, base64_decode($image));
+            $data['image'] = 'goats/' . $imageName;
+        }
+
+        $goat = Goat::create($data);
 
         return response()->json($goat, 201);
     }
@@ -43,6 +53,11 @@ class GoatController extends Controller
         }
 
         $goat = $query->firstOrFail();
+
+        // Convert image path to full URL for mobile
+        if ($goat->image) {
+            $goat->image_url = \Illuminate\Support\Facades\Storage::disk('public')->url($goat->image);
+        }
 
         return response()->json($goat);
     }
@@ -71,17 +86,27 @@ class GoatController extends Controller
             'title' => 'required|string',
             'date_recorded' => 'required|date',
             'next_scheduled_date' => 'nullable|date',
+            'image' => 'nullable|string', // Base64 from mobile
         ]);
 
-        $goat = Goat::findOrFail($id);
-        $record = $goat->healthRecords()->create([
+        $data = [
             'type' => $request->type,
             'title' => $request->title,
             'date_recorded' => $request->date_recorded,
             'description' => $request->description,
             'status' => $request->status ?? 'completed',
             'next_scheduled_date' => $request->next_scheduled_date,
-        ]);
+        ];
+
+        if ($request->filled('image') && !str_contains($request->image, '/')) {
+            $image = $request->image;
+            $imageName = 'mobile_' . time() . '.jpg';
+            \Illuminate\Support\Facades\Storage::disk('public')->put('health-records/' . $imageName, base64_decode($image));
+            $data['image'] = 'health-records/' . $imageName;
+        }
+
+        $goat = Goat::findOrFail($id);
+        $record = $goat->healthRecords()->create($data);
 
         return response()->json($record, 201);
     }
