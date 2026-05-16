@@ -244,6 +244,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
 
   _login() async {
     setState(() => _loading = true);
@@ -283,7 +284,17 @@ class _LoginPageState extends State<LoginPage> {
             const Text('QANDANG', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF4A6741))),
             const SizedBox(height: 40),
             TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
-            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+            TextField(
+              controller: _passwordController, 
+              decoration: InputDecoration(
+                labelText: 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ), 
+              obscureText: _obscurePassword,
+            ),
             const SizedBox(height: 40),
             _loading 
               ? const CircularProgressIndicator()
@@ -1305,6 +1316,7 @@ class _GoatListPageState extends State<GoatListPage> {
         backgroundColor: const Color(0xFF4A6741),
         foregroundColor: Colors.white,
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: FutureBuilder<List<dynamic>>(
         future: _goatsFuture,
         builder: (context, snapshot) {
@@ -1476,49 +1488,8 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // AI Prediction Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.purple.shade700, Colors.purple.shade400]),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('Prediksi Pertumbuhan AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              FutureBuilder(
-                future: ApiService.get('/goats/${goat['id']}/predict'),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) return const Text('Menganalisis...', style: TextStyle(color: Colors.white70));
-                  if (snapshot.hasError || !snapshot.hasData) return const Text('Prediksi tidak tersedia', style: TextStyle(color: Colors.white70));
-                  
-                  final data = jsonDecode((snapshot.data as http.Response).body);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Estimasi berat bulan depan: ${data['predicted_weight_next_month']} kg',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
-                      ),
-                      Text(
-                        'Tingkat kepercayaan: ${(data['confidence_score'] * 100).toInt()}%',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12)
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
+        // AI Prediction Section (Manual Trigger)
+        _AIPredictionCard(goatId: goat['id'].toString()),
         const SizedBox(height: 20),
         _buildInfoRow('Jenis', goat['breed'] ?? '-'),
         _buildInfoRow('Jenis Kelamin', goat['gender'] == 'male' ? 'Jantan' : 'Betina'),
@@ -1579,12 +1550,200 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
         return Card(
           child: ListTile(
             leading: const Icon(Icons.medical_services_outlined, color: Colors.red),
-            title: Text(record['action_type'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(record['action_type'] ?? record['type'] ?? 'Tindakan'),
             subtitle: Text('${record['date_recorded']}\n${record['note'] ?? ''}'),
             isThreeLine: true,
           ),
         );
       },
+    );
+  }
+}
+
+// --- AI Prediction Widget (Manual Trigger) ---
+class _AIPredictionCard extends StatefulWidget {
+  final String goatId;
+  const _AIPredictionCard({required this.goatId});
+
+  @override
+  State<_AIPredictionCard> createState() => _AIPredictionCardState();
+}
+
+class _AIPredictionCardState extends State<_AIPredictionCard> {
+  bool _loading = false;
+  Map<String, dynamic>? _predictionData;
+
+  _runAnalysis() async {
+    setState(() => _loading = true);
+    try {
+      final res = await ApiService.get('/goats/${widget.goatId}/predict');
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (mounted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AIPredictionPage(predictionData: data)));
+        }
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menjalankan analisis AI')));
+    }
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.purple.shade700, Colors.purple.shade400]),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Analisis Kecerdasan AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _runAnalysis,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.2),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _loading 
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('JALANKAN ANALISIS & FORECAST'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text('Gunakan AI untuk prediksi berat & saran kesehatan', style: TextStyle(color: Colors.white70, fontSize: 10)),
+        ],
+      ),
+    );
+  }
+}
+
+// --- AI Prediction Page ---
+class AIPredictionPage extends StatelessWidget {
+  final Map<String, dynamic> predictionData;
+  const AIPredictionPage({super.key, required this.predictionData});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Analisis AI Qandang'),
+        backgroundColor: Colors.purple.shade700,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Forecast Chart Section
+            const Text('GRAFIK FORECAST PERTUMBUHAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
+            const SizedBox(height: 20),
+            Container(
+              height: 200,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: true, drawVerticalLine: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (val, meta) {
+                          if (val == 0) return const Text('Sekarang', style: TextStyle(fontSize: 10));
+                          if (val == 1) return const Text('Bulan Depan', style: TextStyle(fontSize: 10));
+                          return const SizedBox();
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        FlSpot(0, (predictionData['current_weight'] as num).toDouble()),
+                        FlSpot(1, (predictionData['predicted_weight_next_month'] as num).toDouble()),
+                      ],
+                      isCurved: false,
+                      color: Colors.purple,
+                      barWidth: 4,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: true),
+                      belowBarData: BarAreaData(show: true, color: Colors.purple.withOpacity(0.1)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // AI Detailed Analysis Section
+            const Text('DETAIL ANALISIS & REKOMENDASI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.purple.shade100),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Skor Kesehatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${(predictionData['confidence_score'] * 100).toInt()}/100', 
+                           style: TextStyle(color: Colors.purple.shade700, fontWeight: FontWeight.bold, fontSize: 20)),
+                    ],
+                  ),
+                  const Divider(height: 32),
+                  Text(
+                    predictionData['analysis'] ?? 'Gagal memuat analisis.',
+                    style: const TextStyle(fontSize: 15, height: 1.6),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+                backgroundColor: Colors.grey.shade200,
+                foregroundColor: Colors.black87,
+                elevation: 0,
+              ),
+              child: const Text('KEMBALI KE DETAIL'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1620,12 +1779,30 @@ class ProfilePage extends StatelessWidget {
             _buildProfileMenu(
               icon: Icons.settings_outlined,
               label: 'Pengaturan Akun',
-              onTap: () {},
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsPage())),
             ),
             _buildProfileMenu(
               icon: Icons.help_outline,
               label: 'Bantuan & Dukungan',
-              onTap: () {},
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportPage())),
+            ),
+            _buildProfileMenu(
+              icon: Icons.description_outlined,
+              label: 'Panduan Pengguna',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManualPage())),
+            ),
+            _buildProfileMenu(
+              icon: Icons.info_outline,
+              label: 'Tentang Aplikasi',
+              onTap: () => showAboutDialog(
+                context: context,
+                applicationName: 'Qandang',
+                applicationVersion: '1.0.0',
+                applicationIcon: const Icon(Icons.grass, color: Color(0xFF4A6741), size: 40),
+                children: [
+                  const Text('Qandang adalah solusi cerdas untuk manajemen peternakan kambing modern. Membantu peternak dalam pemantauan kesehatan, pertumbuhan, dan silsilah ternak secara digital.'),
+                ],
+              ),
             ),
 
             const Spacer(),
@@ -1672,6 +1849,153 @@ class ProfilePage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// --- Account Settings Page ---
+class AccountSettingsPage extends StatefulWidget {
+  const AccountSettingsPage({super.key});
+
+  @override
+  State<AccountSettingsPage> createState() => _AccountSettingsPageState();
+}
+
+class _AccountSettingsPageState extends State<AccountSettingsPage> {
+  final _nameController = TextEditingController(text: 'Peternak Qandang');
+  final _emailController = TextEditingController(text: 'peternak@qandang.com');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pengaturan Akun')),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const Center(
+            child: Stack(
+              children: [
+                CircleAvatar(radius: 50, child: Icon(Icons.person, size: 50)),
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: CircleAvatar(
+                    backgroundColor: Color(0xFF4A6741),
+                    radius: 18,
+                    child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nama Lengkap', prefixIcon: Icon(Icons.person_outline))),
+          const SizedBox(height: 16),
+          TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),
+          const SizedBox(height: 16),
+          const TextField(decoration: InputDecoration(labelText: 'Password Baru', prefixIcon: Icon(Icons.lock_outline)), obscureText: true),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil diperbarui'))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A6741),
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('SIMPAN PERUBAHAN'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Help & Support Page ---
+class HelpSupportPage extends StatelessWidget {
+  const HelpSupportPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bantuan & Dukungan')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _buildHelpItem(context, 'Pusat Bantuan', 'Cari jawaban dari pertanyaan umum', Icons.help_center_outlined),
+          _buildHelpItem(context, 'Hubungi Kami', 'Kirim pesan ke tim dukungan kami', Icons.contact_support_outlined),
+          _buildHelpItem(context, 'Laporkan Masalah', 'Bantu kami meningkatkan aplikasi', Icons.report_problem_outlined),
+          const SizedBox(height: 24),
+          const Text('FAQ (Pertanyaan Umum)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          const ExpansionTile(
+            title: Text('Bagaimana cara scan QR ternak?'),
+            children: [Padding(padding: EdgeInsets.all(16), child: Text('Anda dapat menekan tombol QR di pojok kanan bawah pada menu Beranda atau Ternak, lalu arahkan kamera ke tag telinga kambing.'))],
+          ),
+          const ExpansionTile(
+            title: Text('Data tidak sinkron?'),
+            children: [Padding(padding: EdgeInsets.all(16), child: Text('Pastikan perangkat Anda terhubung ke internet, lalu tekan tombol sinkronisasi (ikon dua panah melingkar) di pojok kanan atas Beranda.'))],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(BuildContext context, String title, String subtitle, IconData icon) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF4A6741)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        onTap: () {},
+      ),
+    );
+  }
+}
+
+// --- User Manual Page ---
+class UserManualPage extends StatelessWidget {
+  const UserManualPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Panduan Pengguna')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _buildManualSection(
+            '1. Registrasi Ternak',
+            'Buka menu "Ternak", klik tombol "Tambah Ternak" di kiri bawah. Isi data lengkap termasuk Nama, Jenis, dan QR Code ID.',
+          ),
+          _buildManualSection(
+            '2. Pencatatan Berat',
+            'Gunakan Scan QR untuk memunculkan ringkasan info cepat. Masukkan berat pada field yang tersedia dan klik "SIMPAN".',
+          ),
+          _buildManualSection(
+            '3. Riwayat Kesehatan',
+            'Di halaman detail ternak atau info cepat QR, pilih "Catat Kesehatan". Anda bisa memilih jenis tindakan (Vaksin, Vitamin, dll) dan melampirkan foto.',
+          ),
+          _buildManualSection(
+            '4. Analisis Prediksi AI',
+            'Buka detail ternak, cari kartu "Analisis Kecerdasan AI", lalu klik "JALANKAN ANALISIS". AI akan memberikan prediksi berat bulan depan dan skor kesehatan.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualSection(String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4A6741))),
+          const SizedBox(height: 8),
+          Text(content, style: const TextStyle(fontSize: 15, height: 1.5)),
+        ],
       ),
     );
   }

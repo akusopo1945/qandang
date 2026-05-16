@@ -29,29 +29,25 @@ class MimoAIService
     public function predictGrowth(array $goatData)
     {
         try {
-            $prompt = "Sebagai ahli peternakan kambing pintar Qandang, analisislah data kambing berikut secara profesional:\n\n" .
-                      "DATA TERNAK:\n" .
-                      "- Nama: {$goatData['name']}\n" .
-                      "- Jenis: {$goatData['breed']}\n" .
-                      "- Jenis Kelamin: " . ($goatData['gender'] == 'male' ? 'Jantan' : 'Betina') . "\n" .
-                      "- Berat Saat Ini: {$goatData['current_weight']} kg\n" .
-                      "- Usia: {$goatData['age_months']} bulan\n" .
-                      "- Riwayat Berat: " . ($goatData['history'] ?: 'Belum ada data') . "\n\n" .
-                      "INSTRUKSI OUTPUT:\n" .
-                      "1. Berikan Analisis Kondisi Saat Ini.\n" .
-                      "2. Berikan Prediksi Berat Badan untuk bulan depan (wajib sertakan angka dalam format 'XX kg').\n" .
-                      "3. Berikan Skor Kesehatan (0-100).\n" .
-                      "4. Berikan Rekomendasi/Saran Praktis.\n\n" .
-                      "Gunakan format teks yang bersih tanpa tabel markdown yang rumit agar mudah dibaca di mobile. Gunakan bullet points.";
+            $prompt = "Analisis SINGKAT & TO THE POINT untuk kambing Qandang:\n\n" .
+                      "DATA:\n" .
+                      "- Nama: {$goatData['name']} ({$goatData['breed']})\n" .
+                      "- Berat: {$goatData['current_weight']} kg, Usia: {$goatData['age_months']} bln\n" .
+                      "- Riwayat: " . ($goatData['history'] ?: 'Baru') . "\n\n" .
+                      "FORMAT RESPON (WAJIB POIN-POIN):\n" .
+                      "1. KONDISI: [1 kalimat analisis]\n" .
+                      "2. PREDIKSI BERAT: [Angka kg] (bulan depan)\n" .
+                      "3. SKOR KESEHATAN: [0-100]\n" .
+                      "4. SARAN UTAMA: [1-2 poin tindakan paling mendesak]";
 
             $response = $this->client->post('chat/completions', [
                 'json' => [
                     'model' => 'mimo-v2.5-pro', 
                     'messages' => [
-                        ['role' => 'system', 'content' => 'Anda adalah AI asisten peternak kambing profesional. Berikan jawaban yang ringkas, akurat, dan mudah dipahami.'],
+                        ['role' => 'system', 'content' => 'Anda adalah AI asisten peternak yang sangat praktis. Jangan gunakan kata-kata pembuka/penutup. Langsung ke format yang diminta.'],
                         ['role' => 'user', 'content' => $prompt],
                     ],
-                    'temperature' => 0.5,
+                    'temperature' => 0.2,
                 ],
             ]);
 

@@ -129,25 +129,7 @@ class GoatResource extends Resource
                     ->label('AI Prediksi')
                     ->icon('heroicon-o-sparkles')
                     ->color('warning')
-                    ->action(function (Goat $record, \App\Services\MimoAIService $aiService) {
-                        $currentWeight = $record->weightLogs()->latest('date_recorded')->first()?->weight ?? $record->initial_weight;
-                        $ageMonths = $record->birth_date ? now()->diffInMonths($record->birth_date) : 0;
-                        
-                        $prediction = $aiService->predictGrowth([
-                            'name' => $record->name,
-                            'breed' => $record->breed ?? 'Lokal',
-                            'gender' => $record->gender,
-                            'current_weight' => $currentWeight,
-                            'age_months' => $ageMonths,
-                        ]);
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Hasil Analisis AI Qandang')
-                            ->body($prediction)
-                            ->warning()
-                            ->persistent()
-                            ->send();
-                    }),
+                    ->url(fn (Goat $record): string => static::getUrl('predict', ['record' => $record->id])),
                 Tables\Actions\Action::make('downloadQr')
                     ->label('Download QR')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -177,6 +159,7 @@ class GoatResource extends Resource
             'index' => Pages\ListGoats::route('/'),
             'create' => Pages\CreateGoat::route('/create'),
             'edit' => Pages\EditGoat::route('/{record}/edit'),
+            'predict' => Pages\AIPrediction::route('/{record}/predict'),
         ];
     }
 }
