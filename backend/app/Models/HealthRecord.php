@@ -14,6 +14,7 @@ class HealthRecord extends Model
         'description',
         'date_recorded',
         'status',
+        'next_scheduled_date',
     ];
 
     public function goat(): BelongsTo

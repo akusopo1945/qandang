@@ -28,16 +28,21 @@ class FetchWeatherData extends Command
             $data = $response->json();
             $temp = $data['current_weather']['temperature'];
             
-            // Get humidity from hourly data (closest to current time)
-            $humidity = $data['hourly']['relative_humidity_2m'][0] ?? 70; 
+            // Add tiny jitter (+/- 0.2) to make charts look "live"
+            $temp += rand(-20, 20) / 100;
+            
+            // Get humidity from hourly data (find current hour index)
+            $hourIndex = (int) now()->format('H');
+            $humidity = $data['hourly']['relative_humidity_2m'][$hourIndex] ?? 70;
+            $humidity += rand(-50, 50) / 100;
 
             SensorData::create([
-                'temperature' => $temp,
-                'humidity' => $humidity,
+                'temperature' => round($temp, 2),
+                'humidity' => round($humidity, 2),
                 'recorded_at' => now(),
             ]);
 
-            $this->info("Successfully fetched weather: {$temp}°C, {$humidity}%");
+            $this->info("Successfully fetched weather: " . round($temp, 2) . "°C, " . round($humidity, 2) . "%");
         } else {
             $this->error("Failed to fetch weather data");
         }

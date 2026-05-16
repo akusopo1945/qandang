@@ -40,4 +40,8 @@ return [
         'url' => env('MIMO_BASE_URL', 'https://token-plan-sgp.xiaomimimo.com/v1'),
     ],
 
+    'ai_service' => [
+        'url' => env('AI_SERVICE_URL', 'http://localhost:8500'),
+    ],
+
 ];

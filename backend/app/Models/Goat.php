@@ -14,7 +14,24 @@ class Goat extends Model
         'birth_date',
         'initial_weight',
         'description',
+        'dam_id',
+        'sire_id',
     ];
+
+    public function dam(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Goat::class, 'dam_id');
+    }
+
+    public function sire(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Goat::class, 'sire_id');
+    }
+
+    public function offspring(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Goat::class, 'dam_id')->orWhere('sire_id', $this->id);
+    }
 
     public function weightLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

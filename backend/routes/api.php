@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/goats/{idOrQr}', [GoatController::class, 'show']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -17,7 +18,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Goat API
     Route::get('/goats', [GoatController::class, 'index']);
-    Route::get('/goats/{idOrQr}', [GoatController::class, 'show']);
+    Route::post('/goats', [GoatController::class, 'store']);
     Route::post('/goats/{id}/weight', [GoatController::class, 'storeWeight']);
     Route::post('/goats/{id}/health', [GoatController::class, 'storeHealth']);
+    Route::get('/goats/{id}/predict', [GoatController::class, 'predict']);
+    Route::get('/export/goats', [GoatController::class, 'exportCsv']);
 });

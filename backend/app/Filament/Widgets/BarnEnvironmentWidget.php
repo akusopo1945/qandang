@@ -9,6 +9,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class BarnEnvironmentWidget extends BaseWidget
 {
     protected static ?string $pollingInterval = '5s';
+    protected static ?int $sort = 2;
+    protected int | string | array $columnSpan = 'full';
 
     protected function getStats(): array
     {

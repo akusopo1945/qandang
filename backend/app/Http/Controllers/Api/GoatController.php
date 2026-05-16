@@ -13,12 +13,36 @@ class GoatController extends Controller
         return Goat::with(['weightLogs', 'healthRecords'])->latest()->get();
     }
 
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'qr_code' => 'nullable|string|unique:goats,qr_code',
+            'breed' => 'nullable|string',
+            'gender' => 'required|string',
+            'dam_id' => 'nullable|exists:goats,id',
+            'sire_id' => 'nullable|exists:goats,id',
+        ]);
+
+        $goat = Goat::create($request->all());
+
+        return response()->json($goat, 201);
+    }
+
     public function show($idOrQr)
     {
-        $goat = Goat::where('id', $idOrQr)
-            ->orWhere('qr_code', $idOrQr)
-            ->with(['weightLogs', 'healthRecords'])
-            ->firstOrFail();
+        $query = Goat::with(['weightLogs', 'healthRecords', 'dam', 'sire']);
+
+        if (is_numeric($idOrQr)) {
+            $query->where(function ($q) use ($idOrQr) {
+                $q->where('id', $idOrQr)
+                  ->orWhere('qr_code', $idOrQr);
+            });
+        } else {
+            $query->where('qr_code', $idOrQr);
+        }
+
+        $goat = $query->firstOrFail();
 
         return response()->json($goat);
     }
@@ -46,6 +70,7 @@ class GoatController extends Controller
             'type' => 'required|string',
             'title' => 'required|string',
             'date_recorded' => 'required|date',
+            'next_scheduled_date' => 'nullable|date',
         ]);
 
         $goat = Goat::findOrFail($id);
@@ -55,8 +80,74 @@ class GoatController extends Controller
             'date_recorded' => $request->date_recorded,
             'description' => $request->description,
             'status' => $request->status ?? 'completed',
+            'next_scheduled_date' => $request->next_scheduled_date,
         ]);
 
         return response()->json($record, 201);
+    }
+
+    public function predict($id)
+    {
+        $goat = Goat::with('weightLogs')->findOrFail($id);
+        $currentWeight = $goat->weightLogs()->latest()->first()?->weight ?? 20;
+        
+        $birthDate = $goat->birth_date ? \Carbon\Carbon::parse($goat->birth_date) : now()->subYear();
+        $ageMonths = $birthDate->diffInMonths(now());
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::post(config('services.ai_service.url') . '/predict/growth', [
+                'current_weight' => (float)$currentWeight,
+                'age_months' => (int)$ageMonths,
+                'breed' => $goat->breed ?? 'Jawa Randu',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+        } catch (\Exception $e) {
+            // Fallback if AI service is down
+        }
+
+        return response()->json([
+            'predicted_weight_next_month' => round($currentWeight * 1.1, 2),
+            'confidence_score' => 0.7,
+            'note' => 'Estimasi manual (AI Offline)'
+        ]);
+    }
+
+    public function exportCsv()
+    {
+        $goats = Goat::all();
+        $csvFileName = 'goats_report_' . now()->format('Ymd_His') . '.csv';
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$csvFileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $columns = ['ID', 'QR Code', 'Nama', 'Jenis', 'Jenis Kelamin', 'Berat Terakhir', 'Status'];
+
+        $callback = function() use($goats, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($goats as $goat) {
+                fputcsv($file, [
+                    $goat->id,
+                    $goat->qr_code,
+                    $goat->name,
+                    $goat->breed,
+                    $goat->gender,
+                    $goat->weightLogs()->latest()->first()?->weight ?? '-',
+                    $goat->status ?? 'Sehat'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

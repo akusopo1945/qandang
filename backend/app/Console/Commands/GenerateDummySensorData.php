@@ -12,19 +12,36 @@ class GenerateDummySensorData extends Command
 
     public function handle()
     {
-        $baseTemp = 24.5;
-        $baseHumidity = 75;
-
-        // Generate 15 points of historical data
-        for ($i = 15; $i >= 0; $i--) {
+        $this->info('Generating realistic dummy sensor data...');
+        
+        // Base values
+        $avgTemp = 26;
+        $tempAmp = 4; // +/- 4 degrees
+        $avgHum = 75;
+        $humAmp = 10; // +/- 10%
+        
+        // Generate 50 points of historical data (every 10 minutes)
+        for ($i = 50; $i >= 0; $i--) {
+            $time = now()->subMinutes($i * 10);
+            $hour = (int) $time->format('H');
+            $minute = (int) $time->format('i');
+            
+            // Daily cycle: Coldest at 4 AM, Warmest at 2 PM (14:00)
+            // Using sine wave: sin((hour - 8) * PI / 12)
+            $phase = ($hour + ($minute / 60) - 8) * pi() / 12;
+            $sine = sin($phase);
+            
+            $temperature = $avgTemp + ($tempAmp * $sine) + (rand(-10, 10) / 10);
+            $humidity = $avgHum - ($humAmp * $sine) + (rand(-20, 20) / 10);
+            
             SensorData::create([
-                'temperature' => $baseTemp + rand(-20, 20) / 10,
-                'humidity' => $baseHumidity + rand(-50, 50) / 10,
-                'recorded_at' => now()->subMinutes($i * 5),
-                'created_at' => now()->subMinutes($i * 5),
+                'temperature' => round($temperature, 1),
+                'humidity' => round($humidity, 1),
+                'recorded_at' => $time,
+                'created_at' => $time,
             ]);
         }
 
-        $this->info('Dummy sensor data generated.');
+        $this->info('Realistic dummy sensor data generated.');
     }
 }

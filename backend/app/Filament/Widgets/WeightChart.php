@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 class WeightChart extends ChartWidget
 {
     protected static ?string $heading = 'Tren Pertumbuhan Berat (Rata-rata)';
+    protected static ?int $sort = 5;
+    protected int | string | array $columnSpan = 'full';
 
     protected function getData(): array
     {
