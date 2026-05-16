@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,17 +18,29 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle' # Cache gradle dependencies
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.27.0'
           channel: 'stable'
+          cache: true # Cache Flutter SDK
+
+      - name: Cache Pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
 
       - name: Initialize Project Platforms
         run: |
           cd frontend_mobile
-          flutter create . --platforms=android,ios --org com.qandang.app
+          if [ ! -d "android" ]; then
+            flutter create . --platforms=android,ios --org com.qandang.app
+          fi
           # Patch minSdkVersion from 19 to 21 to support mobile_scanner
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           # Patch Kotlin version in settings.gradle (Modern Flutter 3.19+)
