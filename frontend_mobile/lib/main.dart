@@ -442,7 +442,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 12),
               ],
 
-              // Progress Section              Container(
+              const SizedBox(height: 24),
+
+              // Progress Section
+              Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -1442,7 +1445,8 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           CircleAvatar(
             radius: 40,
             backgroundColor: const Color(0xFF4A6741).withOpacity(0.1),
-            child: const Icon(Icons.pets, size: 40, color: Color(0xFF4A6741)),
+            backgroundImage: goat['image_url'] != null ? NetworkImage(goat['image_url']) : null,
+            child: goat['image_url'] == null ? const Icon(Icons.pets, size: 40, color: Color(0xFF4A6741)) : null,
           ),
           const SizedBox(width: 20),
           Expanded(
