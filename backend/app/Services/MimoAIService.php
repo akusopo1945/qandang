@@ -29,22 +29,29 @@ class MimoAIService
     public function predictGrowth(array $goatData)
     {
         try {
-            $prompt = "Sebagai ahli peternakan pintar, analisislah data kambing berikut:\n" .
-                      "Nama: {$goatData['name']}\n" .
-                      "Jenis: {$goatData['breed']}\n" .
-                      "JK: {$goatData['gender']}\n" .
-                      "Berat Terakhir: {$goatData['current_weight']} kg\n" .
-                      "Usia: {$goatData['age_months']} bulan\n\n" .
-                      "Berikan prediksi berat badan untuk bulan depan dan skor kesehatan (0-100) serta saran singkat.";
+            $prompt = "Sebagai ahli peternakan kambing pintar Qandang, analisislah data kambing berikut secara profesional:\n\n" .
+                      "DATA TERNAK:\n" .
+                      "- Nama: {$goatData['name']}\n" .
+                      "- Jenis: {$goatData['breed']}\n" .
+                      "- Jenis Kelamin: " . ($goatData['gender'] == 'male' ? 'Jantan' : 'Betina') . "\n" .
+                      "- Berat Saat Ini: {$goatData['current_weight']} kg\n" .
+                      "- Usia: {$goatData['age_months']} bulan\n" .
+                      "- Riwayat Berat: " . ($goatData['history'] ?: 'Belum ada data') . "\n\n" .
+                      "INSTRUKSI OUTPUT:\n" .
+                      "1. Berikan Analisis Kondisi Saat Ini.\n" .
+                      "2. Berikan Prediksi Berat Badan untuk bulan depan (wajib sertakan angka dalam format 'XX kg').\n" .
+                      "3. Berikan Skor Kesehatan (0-100).\n" .
+                      "4. Berikan Rekomendasi/Saran Praktis.\n\n" .
+                      "Gunakan format teks yang bersih tanpa tabel markdown yang rumit agar mudah dibaca di mobile. Gunakan bullet points.";
 
             $response = $this->client->post('chat/completions', [
                 'json' => [
                     'model' => 'mimo-v2.5-pro', 
                     'messages' => [
-                        ['role' => 'system', 'content' => 'Anda adalah asisten AI ahli peternakan kambing (Livestock Expert). Analisis data dengan data-driven dan berikan saran praktis.'],
+                        ['role' => 'system', 'content' => 'Anda adalah AI asisten peternak kambing profesional. Berikan jawaban yang ringkas, akurat, dan mudah dipahami.'],
                         ['role' => 'user', 'content' => $prompt],
                     ],
-                    'temperature' => 0.7,
+                    'temperature' => 0.5,
                 ],
             ]);
 

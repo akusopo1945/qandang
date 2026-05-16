@@ -113,31 +113,47 @@ class GoatController extends Controller
 
     public function predict($id)
     {
-        $goat = Goat::with('weightLogs')->findOrFail($id);
-        $currentWeight = $goat->weightLogs()->latest()->first()?->weight ?? 20;
+        $goat = Goat::with(['weightLogs' => function($q) {
+            $q->orderBy('date_recorded', 'desc')->take(5);
+        }])->findOrFail($id);
         
+        $currentWeight = $goat->weightLogs->first()?->weight ?? $goat->initial_weight ?? 20;
+        
+        // Fix age calculation (absolute value to prevent negative)
         $birthDate = $goat->birth_date ? \Carbon\Carbon::parse($goat->birth_date) : now()->subYear();
-        $ageMonths = $birthDate->diffInMonths(now());
+        $ageMonths = max(1, (int)now()->diffInMonths($birthDate));
+
+        // Prepare weight history for AI
+        $history = $goat->weightLogs->reverse()->map(fn($l) => "{$l->date_recorded}: {$l->weight}kg")->implode(', ');
 
         try {
-            $response = \Illuminate\Support\Facades\Http::post(config('services.ai_service.url') . '/predict/growth', [
-                'current_weight' => (float)$currentWeight,
-                'age_months' => (int)$ageMonths,
-                'breed' => $goat->breed ?? 'Jawa Randu',
+            $aiService = app(\App\Services\MimoAIService::class);
+            $analysis = $aiService->predictGrowth([
+                'name' => $goat->name,
+                'breed' => $goat->breed ?? 'Lokal',
+                'gender' => $goat->gender,
+                'current_weight' => $currentWeight,
+                'age_months' => $ageMonths,
+                'history' => $history,
             ]);
 
-            if ($response->successful()) {
-                return $response->json();
-            }
-        } catch (\Exception $e) {
-            // Fallback if AI service is down
-        }
+            // Simple parser for AI response to get predicted weight number
+            preg_match('/(\d+(\.\d+)?)\s*kg/', $analysis, $matches);
+            $predictedWeight = isset($matches[1]) ? (float)$matches[1] : $currentWeight * 1.1;
 
-        return response()->json([
-            'predicted_weight_next_month' => round($currentWeight * 1.1, 2),
-            'confidence_score' => 0.7,
-            'note' => 'Estimasi manual (AI Offline)'
-        ]);
+            return response()->json([
+                'analysis' => $analysis,
+                'current_weight' => $currentWeight,
+                'predicted_weight_next_month' => round($predictedWeight, 2),
+                'confidence_score' => 0.85,
+                'forecast_data' => [
+                    ['month' => 'Sekarang', 'weight' => (float)$currentWeight],
+                    ['month' => 'Bulan Depan', 'weight' => round($predictedWeight, 2)],
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function exportCsv()
