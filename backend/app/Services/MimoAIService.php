@@ -14,7 +14,7 @@ class MimoAIService
     public function __construct()
     {
         $this->apiKey = config('services.mimo.key');
-        $this->baseUrl = config('services.mimo.url', 'https://token-plan-sgp.xiaomimimo.com/v1');
+        $this->baseUrl = rtrim(config('services.mimo.url', 'https://token-plan-sgp.xiaomimimo.com/v1'), '/') . '/';
         
         $this->client = new Client([
             'base_uri' => $this->baseUrl,
@@ -39,9 +39,9 @@ class MimoAIService
 
             $response = $this->client->post('chat/completions', [
                 'json' => [
-                    'model' => 'gpt-3.5-turbo', // Or suitable MiMo model
+                    'model' => 'mimo-v2.5-pro', 
                     'messages' => [
-                        ['role' => 'system', 'content' => 'Anda adalah asisten AI khusus peternakan kambing pintar Qandang.'],
+                        ['role' => 'system', 'content' => 'Anda adalah asisten AI ahli peternakan kambing (Livestock Expert). Analisis data dengan data-driven dan berikan saran praktis.'],
                         ['role' => 'user', 'content' => $prompt],
                     ],
                     'temperature' => 0.7,
