@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/app_services.dart';
 import '../services/notification_service.dart';
+import 'barn_monitoring_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -181,7 +182,37 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),              
               const SizedBox(height: 24),
-              // Action card removed since scan is in FAB or we can keep it
+
+              // IoT Shortcut Card
+              GestureDetector(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BarnMonitoringPage())),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [Colors.blue.shade600, Colors.blue.shade400]),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.sensors, color: Colors.white, size: 32),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Monitoring Kandang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text('Suhu: 28°C | Lembab: 65%', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               
               const Text('Aktivitas Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
