@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/app_services.dart';
+import '../services/notification_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -59,6 +60,9 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     upcoming.sort((a, b) => a['date'].compareTo(b['date']));
+    
+    // Sync local notifications for health reminders
+    await NotificationService.syncAllReminders();
     
     setState(() {
       _upcomingVaksins = upcoming;
