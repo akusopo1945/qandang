@@ -12,15 +12,22 @@ class DocumentationSeeder extends Seeder
         Documentation::create([
             'title' => 'Panduan Memulai Qandang',
             'category' => 'Panduan Pengguna',
-            'content' => "# Selamat Datang di Qandang\n\nQandang adalah sistem monitoring ternak kambing pintar. Berikut langkah awal penggunaan:\n\n1. **Daftarkan Kambing**: Masuk ke menu 'Data Kambing' dan tambahkan data baru.\n2. **Identifikasi QR**: Setelah mendaftar, cetak kode QR yang tersedia untuk ditempel pada ternak.\n3. **Monitoring Berat**: Lakukan penimbangan rutin dan catat di menu 'Monitoring Berat'.\n4. **Analisis AI**: Gunakan tombol 'AI Prediksi' (Web) atau 'JALANKAN ANALISIS' (Mobile) untuk mendapatkan prediksi pertumbuhan dan skor kesehatan.\n\n### Fitur Mobile Baru\n- **Scan QR Cepat**: Arahkan kamera ke tag telinga kambing untuk melihat ringkasan info.\n- **Tambah Ternak**: Tombol pendaftaran kini berada di pojok kiri bawah layar Daftar Ternak.\n- **Profil & Bantuan**: Akses menu profil untuk ekspor data CSV dan panduan lengkap.",
+            'content' => "# Selamat Datang di Qandang\n\nQandang adalah sistem monitoring ternak kambing pintar. Berikut langkah awal penggunaan:\n\n1. **Daftarkan Kambing**: Masuk ke menu 'Data Kambing' dan tambahkan data baru (termasuk Bapak/Induk).\n2. **Identifikasi QR**: Cetak kode QR yang tersedia untuk ditempel pada telinga atau kandang ternak.\n3. **Monitoring Rutin**: Gunakan Scan QR di Mobile untuk input berat badan secara cepat.\n4. **Notifikasi**: Aktifkan izin notifikasi di HP untuk menerima pengingat jadwal kesehatan setiap pagi jam 08:00.",
             'order' => 1,
         ]);
 
         Documentation::create([
-            'title' => 'Fitur Prediksi AI (Phase 2)',
+            'title' => 'Fitur AI & Silsilah',
             'category' => 'Panduan Pengguna',
-            'content' => "# Analisis Kecerdasan Buatan\n\nQandang menggunakan AI untuk membantu peternak mengambil keputusan:\n\n### Cara Menggunakan\n1. **Pilih Kambing**: Buka detail kambing di Web Dashboard atau Mobile App.\n2. **Trigger AI**: Klik tombol **AI Prediksi**. Sistem akan menampilkan animasi loading saat AI menganalisis data.\n3. **Hasil Analisis**:\n   - **Forecast Berat**: Prediksi berat badan untuk 1 bulan ke depan.\n   - **Health Score**: Skor keyakinan AI terhadap kondisi kesehatan ternak.\n   - **Rekomendasi**: Saran praktis terkait pakan, vaksin, atau perawatan medis.\n\n*Catatan: Akurasi AI meningkat seiring dengan bertambahnya data historis penimbangan (minimal 3-5 catatan).* ",
+            'content' => "# Fitur Unggulan Qandang\n\n### 1. Prediksi Pertumbuhan AI\nKlik tombol **AI Prediksi** untuk melihat estimasi berat bulan depan. AI menganalisis histori pertumbuhan untuk memberikan rekomendasi pakan.\n\n### 2. Silsilah Visual (Pedigree)\nDi halaman detail kambing, Anda bisa melihat diagram keturunan. Fitur ini sangat berguna untuk perencanaan pembiakan agar tidak terjadi perkawinan sedarah.\n\n### 3. Galeri Foto Detail\nSemua foto dokumentasi kesehatan akan terkumpul otomatis di galeri kambing tersebut. Klik foto untuk memperbesar dengan fitur zoom.",
             'order' => 2,
+        ]);
+
+        Documentation::create([
+            'title' => 'Monitoring IoT (Persiapan)',
+            'category' => 'Panduan Pengguna',
+            'content' => "# Monitoring Kandang Real-time\n\nSaat ini Qandang sedang mempersiapkan integrasi sensor fisik (Phase 3). Anda sudah bisa melihat dashboard **Monitoring Kandang** di menu mobile yang nantinya akan menampilkan data asli dari sensor:\n- Suhu & Kelembaban\n- Kadar Gas Amonia\n- Kontrol Kipas Otomatis",
+            'order' => 3,
         ]);
 
         Documentation::create([
