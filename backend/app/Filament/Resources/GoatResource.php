@@ -72,6 +72,20 @@ class GoatResource extends Resource
                             ->label('Catatan Tambahan')
                             ->columnSpanFull(),
                     ])->columns(2),
+
+                Forms\Components\Section::make('Silsilah (Pedigree)')
+                    ->schema([
+                        Forms\Components\Select::make('dam_id')
+                            ->label('Induk (Dam)')
+                            ->relationship('dam', 'name', fn ($query) => $query->where('gender', 'female'))
+                            ->searchable()
+                            ->preload(),
+                        Forms\Components\Select::make('sire_id')
+                            ->label('Bapak (Sire)')
+                            ->relationship('sire', 'name', fn ($query) => $query->where('gender', 'male'))
+                            ->searchable()
+                            ->preload(),
+                    ])->columns(2),
             ]);
     }
 
@@ -84,32 +98,30 @@ class GoatResource extends Resource
                     ->circular()
                     ->disk('public'),
                 Tables\Columns\TextColumn::make('name')
-
-                    ->label('Foto')
-                    ->circular()
-                    ->disk('public'),
+                    ->label('Nama')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
                 Tables\Columns\TextColumn::make('qr_code')
                     ->label('Kode QR')
                     ->searchable()
                     ->copyable()
                     ->fontFamily('mono')
-                    ->formatStateUsing(fn (string $state): string => $state)
                     ->description(fn (Goat $record): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
-                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(50)->generate($record->qr_code ?? $record->id)
+                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(40)->generate($record->qr_code ?? $record->id)
                     )),
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nama')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('breed')
                     ->label('Ras')
-                    ->searchable(),
-                Tables\Columns\IconColumn::make('gender')
+                    ->searchable()
+                    ->badge()
+                    ->color('gray'),
+                Tables\Columns\TextColumn::make('gender')
                     ->label('JK')
-                    ->icon(fn (string $state): string => match ($state) {
-                        'male' => 'heroicon-m-user',
-                        'female' => 'heroicon-m-user-minus', // Just placeholders, could use custom SVG
-                        default => 'heroicon-m-question-mark-circle',
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'male' => 'Jantan',
+                        'female' => 'Betina',
+                        default => '?',
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'male' => 'info',

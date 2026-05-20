@@ -165,15 +165,12 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           _buildInfoRow('Tanggal Lahir', goat['date_of_birth'] ?? '-'),
           _buildInfoRow('Berat Terakhir', '${goat['weight'] ?? '-'} kg'),
         ]),
-        const SizedBox(height: 20),
-        const Text('Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 12),
-        _buildInfoCard([
-          _buildInfoRow('Induk (Dam)', goat['dam']?['name'] ?? '-'),
-          _buildInfoRow('Bapak (Sire)', goat['sire']?['name'] ?? '-'),
-        ]),
-        const SizedBox(height: 20),
-        const Text('Catatan Tambahan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 24),
+        const Text('Visual Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1)),
+        const SizedBox(height: 16),
+        _buildPedigreeTree(goat),
+        const SizedBox(height: 24),
+        const Text('Catatan Tambahan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
@@ -182,6 +179,71 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           child: Text(goat['note']?.isEmpty == false ? goat['note'] : 'Tidak ada catatan.', style: const TextStyle(height: 1.5)),
         ),
       ],
+    );
+  }
+
+  Widget _buildPedigreeTree(Map<String, dynamic> goat) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildParentNode('Bapak (Sire)', goat['sire']?['name'], Icons.male, Colors.blue)),
+            const SizedBox(width: 16),
+            Expanded(child: _buildParentNode('Induk (Dam)', goat['dam']?['name'], Icons.female, Colors.pink)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Icon(Icons.keyboard_double_arrow_down, color: Colors.grey, size: 24),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF4A6741),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: const Color(0xFF4A6741).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            children: [
+              const Icon(Icons.pets, color: Colors.white, size: 20),
+              const SizedBox(height: 8),
+              Text(goat['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(goat['breed'] ?? '-', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildParentNode(String label, String? name, IconData icon, Color color) {
+    bool hasParent = name != null;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: hasParent ? color.withOpacity(0.3) : Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Icon(icon, color: hasParent ? color : Colors.grey.shade300, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            name ?? 'Tidak Diketahui',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: hasParent ? Colors.black87 : Colors.grey,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
