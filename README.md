@@ -24,11 +24,16 @@ Aplikasi mobile dibangun secara otomatis menggunakan GitHub Actions.
 
 1.  **QR Identification**: Unique digital identity per goat. Scan to see full history.
 2.  **Health Records**: Track vaccinations, medical history, and weight logs.
-3.  **Growth Analytics**: Real-time charts and AI-powered growth predictions.
-4.  **IoT Integration**: Monitor barn temperature and humidity via MQTT.
+3.  **AI Growth Prediction (Phase 2)**: Dynamic charts and AI-powered growth forecasts with health scoring.
+4.  **IoT Integration (Phase 3)**: Monitor barn temperature and humidity via MQTT.
 5.  **Offline-First Mobile**: Designed for field operations with local sync.
 
 ---
+
+## 📖 Documentation
+
+- **[User Manual (Panduan Pengguna)](docs/USER_MANUAL.md)**: Panduan lengkap penggunaan aplikasi untuk peternak.
+- **AI Prediksi**: Fitur unggulan untuk memprediksi berat badan ternak di bulan mendatang.
 
 ## 🛠 Tech Stack
 
