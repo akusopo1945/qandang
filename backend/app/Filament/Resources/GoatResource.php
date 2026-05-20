@@ -83,6 +83,11 @@ class GoatResource extends Resource
                     ->label('Foto')
                     ->circular()
                     ->disk('public'),
+                Tables\Columns\TextColumn::make('name')
+
+                    ->label('Foto')
+                    ->circular()
+                    ->disk('public'),
                 Tables\Columns\TextColumn::make('qr_code')
                     ->label('Kode QR')
                     ->searchable()
