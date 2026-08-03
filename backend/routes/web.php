@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/download-qr/{id}', [DownloadQrController::class, 'download'])->name('qr.download');
+Route::get('/admin/goats/{id}/pdf', [PublicController::class, 'generatePdf'])->name('goat.pdf');
 
 Route::get('/get-started', function () {
     return view('register');
