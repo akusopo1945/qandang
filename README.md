@@ -22,17 +22,23 @@ Aplikasi mobile dibangun secara otomatis menggunakan GitHub Actions.
 
 ## 🚀 Key Features
 
-1.  **QR Identification**: Unique digital identity per goat. Scan to see full history.
-2.  **Health Records**: Track vaccinations, medical history, and weight logs.
-3.  **AI Growth Prediction (Phase 2)**: Dynamic charts and AI-powered growth forecasts with health scoring.
-4.  **IoT Integration (Phase 3)**: Monitor barn temperature and humidity via MQTT.
-5.  **Offline-First Mobile**: Designed for field operations with local sync.
+1.  **QR Identification & Marketplace**: Unique digital identity per goat with a public catalog for selling and auctions.
+2.  **Marketplace Integration**: Built-in storefront with Hero Banner, Catalog, Wishlist, and Checkout system.
+3.  **Health Records**: Track vaccinations, medical history, and weight logs.
+3.  **Fattening & Breeding Tracking**: Dedicated workflows for weight gain targets (Fattening) and reproductive status monitoring with automated HPL (Estimated Delivery Date) for Breeding.
+4.  **AI Growth Prediction (Phase 2)**: Dynamic charts and AI-powered growth forecasts with health scoring and recommendations.
+4.  **Image Gallery & Zoom**: Unified gallery for profile and health documentation with pinch-to-zoom viewer.
+5.  **Visual Pedigree**: Graphical family tree (Sire/Dam) tracking.
+6.  **Local Notifications**: Automatic morning reminders for scheduled health actions.
+7.  **IoT Integration (Phase 3 Readiness)**: Real-time barn environment monitoring dashboard (placeholder).
+8.  **Offline-First Mobile**: Designed for field operations with local SQLite sync.
 
 ---
 
 ## 📖 Documentation
 
-- **[User Manual (Panduan Pengguna)](docs/USER_MANUAL.md)**: Panduan lengkap penggunaan aplikasi untuk peternak.
+- **[User Manual (Peternak)](docs/USER_MANUAL.md)**: Panduan lengkap manajemen ternak.
+- **[Marketplace & QR Manual](docs/MARKETPLACE_MANUAL.md)**: Detail fitur katalog, checkout, dan skema kode QR.
 - **AI Prediksi**: Fitur unggulan untuk memprediksi berat badan ternak di bulan mendatang.
 
 ## 🛠 Tech Stack

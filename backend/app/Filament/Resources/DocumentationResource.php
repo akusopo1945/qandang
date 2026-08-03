@@ -59,6 +59,45 @@ class DocumentationResource extends Resource
                             ->required()
                             ->columnSpanFull(),
                     ]),
+
+                Forms\Components\Placeholder::make('navigation')
+                    ->label('')
+                    ->visible(fn ($operation) => $operation === 'view')
+                    ->content(function (Documentation $record) {
+                        $prev = Documentation::where('order', '<', $record->order)
+                            ->orWhere(function($query) use ($record) {
+                                $query->where('order', $record->order)
+                                      ->where('id', '<', $record->id);
+                            })
+                            ->orderBy('order', 'desc')
+                            ->orderBy('id', 'desc')
+                            ->first();
+
+                        $next = Documentation::where('order', '>', $record->order)
+                            ->orWhere(function($query) use ($record) {
+                                $query->where('order', $record->order)
+                                      ->where('id', '>', $record->id);
+                            })
+                            ->orderBy('order', 'asc')
+                            ->orderBy('id', 'asc')
+                            ->first();
+
+                        $prevHtml = $prev 
+                            ? '<a href="'.DocumentationResource::getUrl('view', ['record' => $prev->id]).'" class="fi-btn fi-btn-size-md relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus-visible:ring-2 rounded-lg fi-color-gray fi-btn-color-gray bg-white text-gray-950 shadow-sm ring-1 ring-gray-950/10 hover:bg-gray-50 px-3 py-2 text-sm inline-grid gap-1.5">&larr; Sebelumnya: '.$prev->title.'</a>' 
+                            : '<span></span>';
+
+                        $nextHtml = $next 
+                            ? '<a href="'.DocumentationResource::getUrl('view', ['record' => $next->id]).'" class="fi-btn fi-btn-size-md relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus-visible:ring-2 rounded-lg fi-color-primary fi-btn-color-primary bg-primary-600 text-white shadow-sm hover:bg-primary-500 px-3 py-2 text-sm inline-grid gap-1.5">Selanjutnya: '.$next->title.' &rarr;</a>' 
+                            : '<span></span>';
+
+                        return new \Illuminate\Support\HtmlString('
+                            <div class="flex justify-between items-center mt-8 pt-8 border-t border-gray-100">
+                                '.$prevHtml.'
+                                '.$nextHtml.'
+                            </div>
+                        ');
+                    })
+                    ->columnSpanFull(),
             ]);
     }
 

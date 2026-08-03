@@ -20,8 +20,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->environment('production') || true) { // Forcing for now as we are behind proxies
-            URL::forceScheme('https');
+        if (!app()->runningInConsole()) {
+            $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $proto = ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' ? 'https' : 'http';
+            URL::forceRootUrl($proto . '://' . $host);
+            URL::forceScheme($proto);
+        } else {
+            URL::forceRootUrl(config('app.url'));
+            if (str_starts_with(config('app.url'), 'https://')) {
+                URL::forceScheme('https');
+            }
         }
+
+        view()->composer('*', function ($view) {
+            if (auth()->check()) {
+                $view->with('cart_count', \App\Models\Cart::where('user_id', auth()->id())->count());
+                $view->with('wishlist_count', \App\Models\Wishlist::where('user_id', auth()->id())->count());
+            } else {
+                $view->with('cart_count', 0);
+                $view->with('wishlist_count', count(session()->get('wishlist', [])));
+            }
+        });
     }
 }

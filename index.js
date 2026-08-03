@@ -29,6 +29,6 @@ app.use('/', createProxyMiddleware({
     }
 }));
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
     console.log(`Qandang Gateway running on port ${PORT}`);
 });

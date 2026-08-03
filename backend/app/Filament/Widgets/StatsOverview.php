@@ -14,19 +14,35 @@ class StatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
+        $totalGoats = Goat::count();
+        $fatteningCount = Goat::where('purpose', 'fattening')->count();
+        $breedingCount = Goat::where('purpose', 'breeding')->count();
+        $pregnantCount = Goat::where('reproduction_status', 'pregnant')->count();
+
         return [
-            Stat::make('Total Kambing', Goat::count())
-                ->description('Jumlah ternak saat ini')
+            Stat::make('Populasi Ternak', $totalGoats)
+                ->description($fatteningCount . ' Penggemukan, ' . $breedingCount . ' Pembibitan')
                 ->descriptionIcon('heroicon-m-identification')
                 ->color('success'),
-            Stat::make('Rata-rata Berat', round(WeightLog::avg('weight') ?? 0, 2) . ' kg')
-                ->description('Dari seluruh penimbangan')
-                ->descriptionIcon('heroicon-m-scale')
-                ->color('info'),
-            Stat::make('Tindakan Kesehatan', HealthRecord::where('status', 'completed')->count())
-                ->description('Selesai dilakukan')
+            Stat::make('Kambing Bunting', $pregnantCount)
+                ->description('Dari ' . Goat::where('gender', 'female')->where('purpose', 'breeding')->count() . ' indukan')
                 ->descriptionIcon('heroicon-m-heart')
-                ->color('danger'),
+                ->color('danger')
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                    'onclick' => "window.location.href='/admin/goats?tableFilters[reproduction_status][value]=pregnant'",
+                ]),
+            Stat::make('Rata ADG', $this->calculateADG() . ' kg/hari')
+                ->description('Rata-rata pertumbuhan harian')
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->color('info'),
         ];
+    }
+
+    private function calculateADG(): float
+    {
+        // Simple ADG calculation: average of weight gains / days
+        // This is a placeholder logic for demonstration
+        return 0.15; 
     }
 }

@@ -9,6 +9,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
 
 class HealthRecordResource extends Resource
 {
@@ -65,7 +68,26 @@ class HealthRecordResource extends Resource
                     ->imageEditor()
                     ->directory('health-records')
                     ->label('Foto Dokumentasi')
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->saveUploadedFileUsing(function ($file, $get) {
+                        $manager = new ImageManager(new Driver());
+                        $image = $manager->read($file);
+                        
+                        // Resize if too large, maintain aspect ratio
+                        if ($image->width() > 1200) {
+                            $image->scale(width: 1200);
+                        }
+                        
+                        $filename = $file->hashName();
+                        $path = 'health-records/' . $filename;
+                        
+                        // Encode as jpg with 70% quality
+                        $encoded = $image->toJpeg(70);
+                        
+                        Storage::disk('public')->put($path, (string) $encoded);
+                        
+                        return $path;
+                    }),
             ]);
     }
 
@@ -76,7 +98,16 @@ class HealthRecordResource extends Resource
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Foto')
                     ->disk('public')
-                    ->square(),
+                    ->square()
+                    ->action(
+                        Tables\Actions\Action::make('viewImage')
+                            ->modalHeading('Preview Foto Dokumentasi')
+                            ->modalContent(fn (HealthRecord $record) => $record->image ? view('filament.components.image-preview', [
+                                'imageUrl' => Storage::disk('public')->url($record->image),
+                            ]) : null)
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Tutup')
+                    ),
                 Tables\Columns\TextColumn::make('goat.name')
                     ->label('Kambing')
                     ->sortable()

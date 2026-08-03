@@ -12,6 +12,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
 
 class GoatResource extends Resource
 {
@@ -36,7 +39,13 @@ class GoatResource extends Resource
                             ->imageEditor()
                             ->directory('goats')
                             ->label('Foto Kambing')
-                            ->columnSpan(1),
+                            ->columnSpan(1)
+                            ->maxSize(2048)
+                            ->rules(['image', 'max:2048'])
+                            ->validationMessages([
+                                'max' => 'Ukuran foto maksimal 2MB. Silakan kompres foto Anda atau gunakan foto yang lebih kecil.',
+                            ])
+                            ->disk('public'),
                         Forms\Components\Group::make([
                             Forms\Components\TextInput::make('name')
                                 ->label('Nama Kambing')
@@ -54,11 +63,67 @@ class GoatResource extends Resource
                                 'female' => 'Betina',
                             ])
                             ->required(),
+                        Forms\Components\Select::make('purpose')
+                            ->label('Tujuan Pemeliharaan')
+                            ->options([
+                                'fattening' => 'Penggemukan (Fattening)',
+                                'breeding' => 'Pembibitan (Breeding)',
+                            ])
+                            ->required()
+                            ->live()
+                            ->default('fattening'),
+                        Forms\Components\Select::make('reproduction_status')
+                            ->label('Status Reproduksi')
+                            ->options([
+                                'empty' => 'Kosong',
+                                'heat' => 'Masa Birahi (Heat)',
+                                'pregnant' => 'Bunting',
+                                'lactating' => 'Menyusui',
+                                'dry' => 'Kering Susu',
+                            ])
+                            ->visible(fn (Forms\Get $get): bool => 
+                                $get('purpose') === 'breeding' && $get('gender') === 'female'
+                            )
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state === 'pregnant') {
+                                    $set('estimated_delivery_date', now()->addDays(150)->format('Y-m-d'));
+                                } else {
+                                    $set('estimated_delivery_date', null);
+                                }
+                            }),
+                        Forms\Components\DatePicker::make('estimated_delivery_date')
+                            ->label('Estimasi Kelahiran (HPL)')
+                            ->helperText('Otomatis diisi 150 hari jika status "Bunting"')
+                            ->visible(fn (Forms\Get $get): bool => $get('reproduction_status') === 'pregnant'),
                         Forms\Components\TextInput::make('breed')
                             ->label('Ras/Jenis')
                             ->placeholder('Contoh: Etawa, Boer, dll')
                             ->maxLength(255),
                     ])->columns(2),
+
+                Forms\Components\Section::make('Marketplace (Katalog & Lelang)')
+                    ->description('Atur harga dan status tampilan di halaman depan')
+                    ->schema([
+                        Forms\Components\Select::make('sale_status')
+                            ->label('Status Jual')
+                            ->options([
+                                'internal' => 'Internal (Tidak Dijual)',
+                                'for_sale' => 'Dijual (Katalog)',
+                                'auction' => 'Dilelang',
+                                'sold' => 'Terjual',
+                            ])
+                            ->required()
+                            ->default('internal'),
+                        Forms\Components\TextInput::make('price')
+                            ->label('Harga (Rp)')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->helperText('Kosongkan jika ingin lelang tanpa harga pembuka'),
+                        Forms\Components\Toggle::make('is_featured')
+                            ->label('Tampilkan di Banner Utama (Hero)')
+                            ->default(false),
+                    ])->columns(3),
 
                 Forms\Components\Section::make('Detail Pertumbuhan')
                     ->schema([
@@ -68,6 +133,19 @@ class GoatResource extends Resource
                             ->label('Berat Awal (kg)')
                             ->numeric()
                             ->suffix('kg'),
+                        Forms\Components\TextInput::make('current_weight')
+                            ->label('Berat Saat Ini (kg)')
+                            ->numeric()
+                            ->suffix('kg'),
+                        Forms\Components\TextInput::make('height')
+                            ->label('Tinggi Badan (cm)')
+                            ->numeric()
+                            ->suffix('cm'),
+                        Forms\Components\TextInput::make('target_weight')
+                            ->label('Target Berat (kg)')
+                            ->numeric()
+                            ->suffix('kg')
+                            ->visible(fn (Forms\Get $get): bool => $get('purpose') === 'fattening'),
                         Forms\Components\Textarea::make('description')
                             ->label('Catatan Tambahan')
                             ->columnSpanFull(),
@@ -96,7 +174,16 @@ class GoatResource extends Resource
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Foto')
                     ->circular()
-                    ->disk('public'),
+                    ->disk('public')
+                    ->action(
+                        Tables\Actions\Action::make('viewImage')
+                            ->modalHeading('Preview Foto')
+                            ->modalContent(fn (Goat $record) => $record->image ? view('filament.components.image-preview', [
+                                'imageUrl' => Storage::disk('public')->url($record->image),
+                            ]) : null)
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Tutup')
+                    ),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama')
                     ->searchable()
@@ -108,13 +195,78 @@ class GoatResource extends Resource
                     ->copyable()
                     ->fontFamily('mono')
                     ->description(fn (Goat $record): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
-                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(40)->generate($record->qr_code ?? $record->id)
+                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(40)->generate(route('catalog.show', $record->qr_code))
                     )),
                 Tables\Columns\TextColumn::make('breed')
                     ->label('Ras')
                     ->searchable()
                     ->badge()
-                    ->color('gray'),
+                    ->color(fn (string $state): string => match (strtolower($state)) {
+                        'boer' => 'warning',
+                        'etawa' => 'success',
+                        'saanen' => 'info',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Harga')
+                    ->money('IDR')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sale_status')
+                    ->label('Status Jual')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'internal' => 'Internal',
+                        'for_sale' => 'Dijual',
+                        'auction' => 'Lelang',
+                        'sold' => 'Terjual',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'for_sale' => 'success',
+                        'auction' => 'warning',
+                        'sold' => 'danger',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('purpose')
+                    ->label('Tujuan')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'fattening' => 'Penggemukan',
+                        'breeding' => 'Pembibitan',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'fattening' => 'warning',
+                        'breeding' => 'success',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('reproduction_status')
+                    ->label('Status Reproduksi')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'empty' => 'Kosong',
+                        'heat' => 'Birahi',
+                        'pregnant' => 'Bunting',
+                        'lactating' => 'Menyusui',
+                        'dry' => 'Kering',
+                        default => '-',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'pregnant' => 'danger',
+                        'heat' => 'warning',
+                        'lactating' => 'info',
+                        default => 'gray',
+                    })
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('estimated_delivery_date')
+                    ->label('HPL')
+                    ->date()
+                    ->sortable()
+                    ->color('danger')
+                    ->description(fn (Goat $record): ?string => 
+                        $record->estimated_delivery_date ? now()->diffInDays($record->estimated_delivery_date, false) . ' hari lagi' : null
+                    )
+                    ->visible(fn ($livewire) => true),
                 Tables\Columns\TextColumn::make('gender')
                     ->label('JK')
                     ->badge()
@@ -139,7 +291,21 @@ class GoatResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('purpose')
+                    ->label('Tujuan')
+                    ->options([
+                        'fattening' => 'Penggemukan',
+                        'breeding' => 'Pembibitan',
+                    ]),
+                Tables\Filters\SelectFilter::make('reproduction_status')
+                    ->label('Status Reproduksi')
+                    ->options([
+                        'empty' => 'Kosong',
+                        'heat' => 'Birahi',
+                        'pregnant' => 'Bunting',
+                        'lactating' => 'Menyusui',
+                        'dry' => 'Kering',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\Action::make('predict')

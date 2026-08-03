@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Goat;
 use Illuminate\Http\Request;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
 
 class GoatController extends Controller
 {
@@ -28,10 +31,19 @@ class GoatController extends Controller
         $data = $request->all();
 
         if ($request->filled('image') && !str_contains($request->image, '/')) {
-            $image = $request->image;
             $imageName = 'mobile_' . time() . '.jpg';
-            \Illuminate\Support\Facades\Storage::disk('public')->put('goats/' . $imageName, base64_decode($image));
-            $data['image'] = 'goats/' . $imageName;
+            $path = 'goats/' . $imageName;
+            
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read(base64_decode($request->image));
+            
+            if ($image->width() > 1000) {
+                $image->scale(width: 1000);
+            }
+            
+            $encoded = $image->toJpeg(75);
+            Storage::disk('public')->put($path, (string) $encoded);
+            $data['image'] = $path;
         }
 
         $goat = Goat::create($data);
@@ -99,10 +111,19 @@ class GoatController extends Controller
         ];
 
         if ($request->filled('image') && !str_contains($request->image, '/')) {
-            $image = $request->image;
             $imageName = 'mobile_' . time() . '.jpg';
-            \Illuminate\Support\Facades\Storage::disk('public')->put('health-records/' . $imageName, base64_decode($image));
-            $data['image'] = 'health-records/' . $imageName;
+            $path = 'health-records/' . $imageName;
+            
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read(base64_decode($request->image));
+            
+            if ($image->width() > 1200) {
+                $image->scale(width: 1200);
+            }
+            
+            $encoded = $image->toJpeg(70);
+            Storage::disk('public')->put($path, (string) $encoded);
+            $data['image'] = $path;
         }
 
         $goat = Goat::findOrFail($id);
