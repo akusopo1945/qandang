@@ -307,7 +307,52 @@ class GoatResource extends Resource
                         'dry' => 'Kering',
                     ]),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('exportCsv')
+                    ->label('Ekspor Data (CSV/Excel)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('info')
+                    ->action(function () {
+                        $goats = Goat::all();
+                        
+                        $callback = function() use ($goats) {
+                            $file = fopen('php://output', 'w');
+                            // Add UTF-8 BOM for proper excel loading
+                            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                            
+                            fputcsv($file, ['ID', 'Kode QR', 'Nama', 'Jenis Kelamin', 'Ras', 'Berat Awal', 'Berat Sekarang', 'Tujuan', 'HPL']);
+                            
+                            foreach ($goats as $goat) {
+                                fputcsv($file, [
+                                    $goat->id,
+                                    $goat->qr_code,
+                                    $goat->name,
+                                    $goat->gender == 'male' ? 'Jantan' : 'Betina',
+                                    $goat->breed,
+                                    $goat->initial_weight,
+                                    $goat->current_weight,
+                                    $goat->purpose == 'milk' ? 'Susu' : ($goat->purpose == 'meat' ? 'Pedaging' : 'Breeding'),
+                                    $goat->estimated_delivery_date
+                                ]);
+                            }
+                            fclose($file);
+                        };
+                        
+                        return response()->streamDownload($callback, "data-kambing-" . date('Y-m-d-His') . ".csv", [
+                            "Content-Type" => "text/csv; charset=UTF-8",
+                            "Pragma" => "no-cache",
+                            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+                            "Expires" => "0"
+                        ]);
+                    })
+            ])
             ->actions([
+                Tables\Actions\Action::make('downloadCertificate')
+                    ->label('Sertifikat')
+                    ->icon('heroicon-o-document-text')
+                    ->color('danger')
+                    ->url(fn (Goat $record): string => route('goat.pdf', $record))
+                    ->openUrlInNewTab(),
                 Tables\Actions\Action::make('predict')
                     ->label('AI Prediksi')
                     ->icon('heroicon-o-sparkles')
