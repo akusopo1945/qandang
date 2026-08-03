@@ -315,7 +315,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
                   onTap: () => _showFullScreenImage(context, record['image_url']),
                   child: Container(
                     height: 150, width: double.infinity,
-                    margin: const EdgeInsets.symmetric(horizontal: 16, bottom: 16),
+                    margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       image: DecorationImage(image: NetworkImage(record['image_url']), fit: BoxFit.cover),

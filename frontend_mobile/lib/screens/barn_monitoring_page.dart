@@ -128,7 +128,7 @@ class _BarnMonitoringPageState extends State<BarnMonitoringPage> {
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.black)),
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 8),
           Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
