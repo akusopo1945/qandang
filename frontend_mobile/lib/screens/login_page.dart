@@ -30,6 +30,10 @@ class _LoginPageState extends State<LoginPage> {
         final data = jsonDecode(res.body);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', data['token']);
+        if (data['user'] != null) {
+          await prefs.setString('user_name', data['user']['name'] ?? '');
+          await prefs.setString('user_email', data['user']['email'] ?? '');
+        }
         if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));
         }

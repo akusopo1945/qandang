@@ -45,6 +45,8 @@ jobs:
           if [ ! -d "android" ]; then
             flutter create . --platforms=android,ios --org com.qandang.app
           fi
+          # Patch AndroidManifest.xml to add CAMERA permission for mobile_scanner
+          sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA" />\n    <application|' android/app/src/main/AndroidManifest.xml
           # Patch minSdkVersion from 19 to 21 to support mobile_scanner
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           # Patch Kotlin version in settings.gradle (Modern Flutter 3.19+)

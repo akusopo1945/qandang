@@ -82,7 +82,6 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   }
 
   Widget _buildHeader(Map<String, dynamic> goat) {
-    // Collect all images for the gallery
     List<String> images = [];
     if (goat['image_url'] != null) images.add(goat['image_url']);
     final healthRecords = goat['health_records'] as List? ?? [];
@@ -110,7 +109,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       image: DecorationImage(image: NetworkImage(images[i]), fit: BoxFit.cover),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                     ),
                   ),
                 ),
@@ -166,7 +165,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           _buildInfoRow('Berat Terakhir', '${goat['weight'] ?? '-'} kg'),
         ]),
         const SizedBox(height: 24),
-        const Text('Visual Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1)),
+        const Text('Visual Silsilah (Pedigree - Klik untuk Navigasi)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1)),
         const SizedBox(height: 16),
         _buildPedigreeTree(goat),
         const SizedBox(height: 24),
@@ -183,13 +182,17 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   }
 
   Widget _buildPedigreeTree(Map<String, dynamic> goat) {
+    // Get parent IDs safely
+    final sireId = goat['sire_id'] ?? goat['sire']?['id'];
+    final damId = goat['dam_id'] ?? goat['dam']?['id'];
+
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _buildParentNode('Bapak (Sire)', goat['sire']?['name'], Icons.male, Colors.blue)),
+            Expanded(child: _buildParentNode('Bapak (Sire)', goat['sire']?['name'], sireId, Icons.male, Colors.blue)),
             const SizedBox(width: 16),
-            Expanded(child: _buildParentNode('Induk (Dam)', goat['dam']?['name'], Icons.female, Colors.pink)),
+            Expanded(child: _buildParentNode('Induk (Dam)', goat['dam']?['name'], damId, Icons.female, Colors.pink)),
           ],
         ),
         const SizedBox(height: 12),
@@ -216,33 +219,42 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
     );
   }
 
-  Widget _buildParentNode(String label, String? name, IconData icon, Color color) {
-    bool hasParent = name != null;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: hasParent ? color.withOpacity(0.3) : Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Icon(icon, color: hasParent ? color : Colors.grey.shade300, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            name ?? 'Tidak Diketahui',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: hasParent ? Colors.black87 : Colors.grey,
+  Widget _buildParentNode(String label, String? name, dynamic parentId, IconData icon, Color color) {
+    bool hasParent = name != null && parentId != null;
+    return GestureDetector(
+      onTap: hasParent ? () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: parentId.toString())));
+        // Refresh page data when returning from parent details
+        setState(() {
+          _goatFuture = _fetchGoatDetail();
+        });
+      } : null,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: hasParent ? color.withOpacity(0.3) : Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Icon(icon, color: hasParent ? color : Colors.grey.shade300, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              name ?? 'Tidak Diketahui',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: hasParent ? Colors.black87 : Colors.grey,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -273,22 +285,86 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
 
   Widget _buildWeightTab(List logs) {
     if (logs.isEmpty) return const Center(child: Text('Belum ada data penimbangan.'));
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: logs.length,
-      itemBuilder: (context, i) {
-        final log = logs[i];
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-          child: ListTile(
-            leading: const Icon(Icons.monitor_weight_outlined, color: Colors.blue),
-            title: Text('${log['weight']} kg', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(log['date_recorded']),
+
+    // Sort chronologically for line chart
+    final sortedLogs = List.from(logs)..sort((a, b) => (a['date_recorded'] as String).compareTo(b['date_recorded'] as String));
+    
+    List<FlSpot> spots = [];
+    for (int i = 0; i < sortedLogs.length; i++) {
+      final w = sortedLogs[i]['weight'];
+      final double weightVal = w is num ? w.toDouble() : double.tryParse(w.toString()) ?? 0.0;
+      spots.add(FlSpot(i.toDouble(), weightVal));
+    }
+
+    return Column(
+      children: [
+        if (spots.length >= 2) ...[
+          Container(
+            height: 180,
+            padding: const EdgeInsets.only(right: 24, left: 12, top: 24, bottom: 12),
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: true, drawVerticalLine: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (val, meta) {
+                        int idx = val.toInt();
+                        if (idx >= 0 && idx < sortedLogs.length) {
+                          final dateStr = sortedLogs[idx]['date_recorded'] as String;
+                          try {
+                            final date = DateTime.parse(dateStr);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text('${date.day}/${date.month}', style: const TextStyle(fontSize: 8)),
+                            );
+                          } catch (_) {}
+                        }
+                        return const SizedBox();
+                      },
+                    ),
+                  ),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: const Color(0xFF4A6741),
+                    barWidth: 3,
+                    dotData: const FlDotData(show: true),
+                    belowBarData: BarAreaData(show: true, color: const Color(0xFF4A6741).withOpacity(0.1)),
+                  ),
+                ],
+              ),
+            ),
           ),
-        );
-      },
+          const Divider(),
+        ],
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: logs.length,
+            itemBuilder: (context, i) {
+              final log = logs[i];
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                child: ListTile(
+                  leading: const Icon(Icons.monitor_weight_outlined, color: Color(0xFF4A6741)),
+                  title: Text('${log['weight']} kg', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(log['date_recorded']),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

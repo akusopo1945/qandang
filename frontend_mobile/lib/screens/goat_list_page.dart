@@ -11,11 +11,11 @@ class GoatListPage extends StatefulWidget {
 }
 
 class _GoatListPageState extends State<GoatListPage> {
-  late Future<List<dynamic>> _goatsFuture;
   List<dynamic> _allGoats = [];
   List<dynamic> _filteredGoats = [];
   String _searchQuery = '';
   String _filterBreed = 'Semua';
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -23,16 +23,21 @@ class _GoatListPageState extends State<GoatListPage> {
     _refreshData();
   }
 
-  void _refreshData() {
-    setState(() {
-      _goatsFuture = _fetchGoats().then((value) {
+  Future<void> _refreshData() async {
+    if (mounted) setState(() => _isLoading = true);
+    try {
+      final value = await _fetchGoats();
+      if (mounted) {
         setState(() {
           _allGoats = value;
           _applyFilter();
         });
-        return value;
-      });
-    });
+      }
+    } catch (_) {
+      // Fail silently, fallback is local DB via _fetchGoats
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _applyFilter() {
@@ -55,13 +60,13 @@ class _GoatListPageState extends State<GoatListPage> {
         return goats;
       }
     } catch (_) {
-      // Fallback to local DB
+      // Fallback
     }
     final localGoats = await DbHelper.getGoats();
     return localGoats.map((g) => {
       ...g,
-      'weight_logs': jsonDecode(g['weight_logs'] as String),
-      'health_records': jsonDecode(g['health_records'] as String),
+      'weight_logs': jsonDecode(g['weight_logs'] as String? ?? '[]'),
+      'health_records': jsonDecode(g['health_records'] as String? ?? '[]'),
     }).toList();
   }
 
@@ -125,10 +130,15 @@ class _GoatListPageState extends State<GoatListPage> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
+                  if (nameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama tidak boleh kosong')));
+                    return;
+                  }
+
                   final body = {
-                    'name': nameController.text,
-                    'breed': breedController.text,
-                    'qr_code': qrController.text,
+                    'name': nameController.text.trim(),
+                    'breed': breedController.text.trim(),
+                    'qr_code': qrController.text.trim(),
                     'gender': gender,
                     'dam_id': selectedDamId,
                     'sire_id': selectedSireId,
@@ -138,18 +148,44 @@ class _GoatListPageState extends State<GoatListPage> {
                   try {
                     final res = await ApiService.post('/goats', body);
                     if (res.statusCode == 201) {
+                      final newGoat = jsonDecode(res.body);
+                      await DbHelper.saveGoats([newGoat]);
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ternak berhasil didaftarkan! 🐐')));
                       _refreshData();
+                    } else {
+                      final err = jsonDecode(res.body);
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal mendaftarkan ternak')));
                     }
                   } catch (_) {
+                    final tempId = DateTime.now().millisecondsSinceEpoch;
+                    final localGoat = {
+                      'id': tempId,
+                      'name': body['name'],
+                      'breed': body['breed'],
+                      'qr_code': body['qr_code'],
+                      'gender': body['gender'],
+                      'weight': null,
+                      'status': 'Sehat',
+                      'note': '',
+                      'date_of_birth': null,
+                      'weight_logs': [],
+                      'health_records': [],
+                      'dam_id': body['dam_id'],
+                      'sire_id': body['sire_id'],
+                    };
+                    await DbHelper.saveGoats([localGoat]);
                     await DbHelper.addToQueue('/goats', 'POST', body);
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean pendaftaran disimpan. 📡'), backgroundColor: Colors.orange));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean pendaftaran disimpan. 📡'), backgroundColor: Colors.orange));
+                      _refreshData();
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4A6741),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('DAFTARKAN'),
               ),
@@ -244,54 +280,54 @@ class _GoatListPageState extends State<GoatListPage> {
         foregroundColor: Colors.white,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-      body: FutureBuilder<List<dynamic>>(
-        future: _goatsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-          
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: _filteredGoats.length,
-            itemBuilder: (context, i) {
-              final goat = _filteredGoats[i];
-              Color statusColor = Colors.green;
-              if (goat['status'] == 'Sakit') statusColor = Colors.red;
-              if (goat['status'] == 'Perlu Vaksin') statusColor = Colors.orange;
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _filteredGoats.isEmpty
+              ? const Center(child: Text('Tidak ada data ternak.'))
+              : RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _filteredGoats.length,
+                    itemBuilder: (context, i) {
+                      final goat = _filteredGoats[i];
+                      Color statusColor = Colors.green;
+                      if (goat['status'] == 'Sakit') statusColor = Colors.red;
+                      if (goat['status'] == 'Perlu Vaksin') statusColor = Colors.orange;
 
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16), 
-                  side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(12),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                    child: Icon(Icons.pets, color: statusColor),
+                      return Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16), 
+                          side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(12),
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                            child: Icon(Icons.pets, color: statusColor),
+                          ),
+                          title: Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}'),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.chevron_right),
+                              const SizedBox(height: 4),
+                              Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          onTap: () async {
+                            await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
+                            _refreshData(); // Refresh list if detail screen updated something
+                          },
+                        ),
+                      );
+                    },
                   ),
-                  title: Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${goat['breed']} • ${goat['gender']}'),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.chevron_right),
-                      const SizedBox(height: 4),
-                      Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
-                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
     );
   }
 }
