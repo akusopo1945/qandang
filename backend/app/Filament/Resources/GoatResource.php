@@ -189,14 +189,25 @@ class GoatResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-                Tables\Columns\TextColumn::make('qr_code')
+                 Tables\Columns\TextColumn::make('qr_code')
                     ->label('Kode QR')
                     ->searchable()
                     ->copyable()
                     ->fontFamily('mono')
                     ->description(fn (Goat $record): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
-                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(40)->generate(route('catalog.show', $record->qr_code))
-                    )),
+                        \SimpleSoftwareIO\QrCode\Facades\QrCode::size(60)->generate(route('catalog.show', $record->qr_code))
+                    ))
+                    ->action(
+                        Tables\Actions\Action::make('viewQr')
+                            ->modalHeading(fn (Goat $record) => "QR Code - {$record->name}")
+                            ->modalContent(fn (Goat $record) => view('filament.components.qr-preview', [
+                                'qrCode' => \SimpleSoftwareIO\QrCode\Facades\QrCode::size(250)->generate(route('catalog.show', $record->qr_code)),
+                                'qrCodeText' => $record->qr_code,
+                                'qrCodeUrl' => route('catalog.show', $record->qr_code),
+                            ]))
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Tutup')
+                    ),
                 Tables\Columns\TextColumn::make('breed')
                     ->label('Ras')
                     ->searchable()
