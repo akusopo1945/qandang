@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'feed_calculator_page.dart';
 import '../services/app_services.dart';
 
 class GoatDetailPage extends StatefulWidget {
@@ -212,15 +214,131 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   }
 
   Widget _buildInfoTab(Map<String, dynamic> goat) {
+    final double purchase = (goat['purchase_price'] as num?)?.toDouble() ?? 0;
+    final double feedCost = (goat['feeding_cost'] as num?)?.toDouble() ?? 0;
+    final double marketPrice = (goat['price'] as num?)?.toDouble() ?? 0;
+    final double totalCost = purchase + feedCost;
+    final double estProfit = marketPrice > 0 ? (marketPrice - totalCost) : 0;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         _AIPredictionCard(goatId: goat['id'].toString()),
         const SizedBox(height: 20),
+
+        // Quick Actions Row
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final weight = double.tryParse(goat['weight']?.toString() ?? '0');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FeedCalculatorPage(initialWeight: weight, initialPurpose: goat['purpose']),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.calculate_outlined, size: 18),
+                label: const Text('Hitung Pakan', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4A6741),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final qrCode = goat['qr_code'] ?? goat['id'];
+                  final url = Uri.parse('https://qandang.duckdns.org/catalog/$qrCode');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+                icon: const Icon(Icons.qr_code, size: 18),
+                label: const Text('Kartu & QR Tag', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4A6741),
+                  side: const BorderSide(color: Color(0xFF4A6741)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Financial & ROI Card
+        Card(
+          elevation: 0,
+          color: Colors.green.shade50.withOpacity(0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.green.shade200),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF4A6741), size: 20),
+                    SizedBox(width: 8),
+                    Text('Analisis Finansial & Estimasi ROI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF4A6741))),
+                  ],
+                ),
+                const Divider(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Harga Beli / Modal Awal:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(purchase > 0 ? 'Rp ${purchase.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}' : '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total Biaya Pakan & Medis:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(feedCost > 0 ? 'Rp ${feedCost.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}' : '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Estimasi Harga Pasaran:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(marketPrice > 0 ? 'Rp ${marketPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}' : '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue)),
+                  ],
+                ),
+                const Divider(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Estimasi Keuntungan (Profit):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text(
+                      estProfit != 0 ? 'Rp ${estProfit.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}' : '-',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: estProfit >= 0 ? Colors.green.shade800 : Colors.red),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
         _buildInfoCard([
-          _buildInfoRow('Jenis', goat['breed'] ?? '-'),
+          _buildInfoRow('Jenis / Ras', goat['breed'] ?? '-'),
+          _buildInfoRow('Sekat / Blok Kandang', goat['barn_block']?.isEmpty == false ? goat['barn_block'] : 'Utama'),
           _buildInfoRow('Jenis Kelamin', goat['gender'] == 'male' ? 'Jantan' : 'Betina'),
-          _buildInfoRow('Tanggal Lahir', goat['date_of_birth'] ?? '-'),
+          _buildInfoRow('Tujuan Pemeliharaan', goat['purpose'] == 'breeding' ? 'Pembibitan (Breeding)' : 'Penggemukan (Fattening)'),
+          _buildInfoRow('Tanggal Lahir', goat['date_of_birth'] ?? goat['birth_date'] ?? '-'),
           _buildInfoRow('Berat Terakhir', '${goat['weight'] ?? '-'} kg'),
         ]),
         const SizedBox(height: 24),
@@ -234,7 +352,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           padding: const EdgeInsets.all(16),
           width: double.infinity,
           decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-          child: Text(goat['note']?.isEmpty == false ? goat['note'] : 'Tidak ada catatan.', style: const TextStyle(height: 1.5)),
+          child: Text(goat['note']?.isEmpty == false ? goat['note'] : (goat['description']?.isEmpty == false ? goat['description'] : 'Tidak ada catatan.'), style: const TextStyle(height: 1.5)),
         ),
       ],
     );

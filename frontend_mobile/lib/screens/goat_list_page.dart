@@ -74,11 +74,15 @@ class _GoatListPageState extends State<GoatListPage> {
     final bool isEdit = goat != null;
     final nameController = TextEditingController(text: goat?['name'] ?? '');
     final breedController = TextEditingController(text: goat?['breed'] ?? '');
+    final blockController = TextEditingController(text: goat?['barn_block'] ?? '');
     final qrController = TextEditingController(text: goat?['qr_code'] ?? '');
     final initialWeightController = TextEditingController(text: goat?['initial_weight']?.toString() ?? '');
     final currentWeightController = TextEditingController(text: goat?['current_weight']?.toString() ?? goat?['weight']?.toString() ?? '');
     final heightController = TextEditingController(text: goat?['height']?.toString() ?? '');
     final targetWeightController = TextEditingController(text: goat?['target_weight']?.toString() ?? '');
+    final purchasePriceController = TextEditingController(text: goat?['purchase_price']?.toString() ?? '');
+    final feedingCostController = TextEditingController(text: goat?['feeding_cost']?.toString() ?? '');
+    final marketPriceController = TextEditingController(text: goat?['price']?.toString() ?? '');
     final descController = TextEditingController(text: goat?['description'] ?? goat?['note'] ?? '');
     
     String gender = goat?['gender'] ?? 'male';
@@ -123,7 +127,13 @@ class _GoatListPageState extends State<GoatListPage> {
                 
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama / No. Telinga *')),
                 const SizedBox(height: 12),
-                TextField(controller: qrController, decoration: const InputDecoration(labelText: 'Kode QR / ID (Opsional)')),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: qrController, decoration: const InputDecoration(labelText: 'Kode QR / ID (Opsional)'))),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: blockController, decoration: const InputDecoration(labelText: 'Blok / Sekat Kandang', hintText: 'misal: A-01'))),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: ['Jawa Randu', 'Etawa', 'Boer', 'Saanen', 'Boran', 'Lokal'].contains(breedController.text) ? breedController.text : null,
@@ -209,6 +219,19 @@ class _GoatListPageState extends State<GoatListPage> {
                 ),
                 const SizedBox(height: 16),
 
+                const Text('Finansial & Modal (Rp)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: purchasePriceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga Beli (Rp)', prefixText: 'Rp '))),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: feedingCostController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Biaya Pakan/Medis', prefixText: 'Rp '))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: marketPriceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Estimasi Harga Jual Pasaran (Rp)', prefixText: 'Rp ')),
+                const SizedBox(height: 16),
+
                 const Text('Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Row(
@@ -251,6 +274,7 @@ class _GoatListPageState extends State<GoatListPage> {
                           final body = {
                             'name': nameController.text.trim(),
                             'breed': breedController.text.trim(),
+                            'barn_block': blockController.text.trim(),
                             'qr_code': qrController.text.trim(),
                             'gender': gender,
                             'purpose': purpose,
@@ -261,6 +285,9 @@ class _GoatListPageState extends State<GoatListPage> {
                             'weight': double.tryParse(currentWeightController.text.trim()),
                             'height': double.tryParse(heightController.text.trim()),
                             'target_weight': double.tryParse(targetWeightController.text.trim()),
+                            'purchase_price': double.tryParse(purchasePriceController.text.trim()),
+                            'feeding_cost': double.tryParse(feedingCostController.text.trim()),
+                            'price': double.tryParse(marketPriceController.text.trim()),
                             'description': descController.text.trim(),
                             'note': descController.text.trim(),
                             'dam_id': selectedDamId,

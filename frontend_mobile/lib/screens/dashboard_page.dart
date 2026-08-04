@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/app_services.dart';
 import '../services/notification_service.dart';
-import 'barn_monitoring_page.dart';
+import 'feed_calculator_page.dart';
+import 'farm_calendar_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -181,6 +182,58 @@ class _DashboardPageState extends State<DashboardPage> {
                   _buildStatCard('Kondisi Kandang', 'Optimal', Icons.wb_sunny, Colors.orange),
                 ],
               ),              
+              const SizedBox(height: 24),
+
+              const Text('Fitur Unggulan Peternak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedCalculatorPage())),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A6741).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF4A6741).withOpacity(0.2)),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.calculate_outlined, color: Color(0xFF4A6741), size: 28),
+                            SizedBox(height: 8),
+                            Text('Kalkulator Pakan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF4A6741)), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FarmCalendarPage())),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.pink.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.pink.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.calendar_month_outlined, color: Colors.pink.shade700, size: 28),
+                            const SizedBox(height: 8),
+                            Text('Kalender HPL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.pink.shade700), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 24),
 
               // IoT Shortcut Card

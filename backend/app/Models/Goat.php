@@ -10,6 +10,7 @@ class Goat extends Model
         'qr_code',
         'name',
         'breed',
+        'barn_block',
         'gender',
         'purpose',
         'reproduction_status',
@@ -24,6 +25,8 @@ class Goat extends Model
         'sire_id',
         'image',
         'price',
+        'purchase_price',
+        'feeding_cost',
         'sale_status',
         'is_featured',
     ];
