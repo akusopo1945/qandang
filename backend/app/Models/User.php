@@ -27,6 +27,15 @@ class User extends Authenticatable
         'avatar',
     ];
 
+    protected $appends = [
+        'avatar_url',
+    ];
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar) : null;
+    }
+
     public function isOwner(): bool
     {
         return $this->role === 'owner';

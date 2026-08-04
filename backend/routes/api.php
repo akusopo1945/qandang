@@ -12,13 +12,7 @@ Route::get('/goats/{idOrQr}', [GoatController::class, 'show']);
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        $user = $request->user();
-        if ($user->avatar) {
-            $user->avatar_url = \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar);
-        } else {
-            $user->avatar_url = null;
-        }
-        return $user;
+        return $request->user();
     });
     Route::put('/user', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);

@@ -29,15 +29,9 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($user->avatar) {
-            $user->avatar_url = Storage::disk('public')->url($user->avatar);
-        } else {
-            $user->avatar_url = null;
-        }
-
         return response()->json([
             'token' => $user->createToken($request->device_name)->plainTextToken,
-            'user' => $user,
+            'user' => $user->fresh(),
         ]);
     }
 
@@ -83,15 +77,9 @@ class AuthController extends Controller
 
         $user->save();
 
-        if ($user->avatar) {
-            $user->avatar_url = Storage::disk('public')->url($user->avatar);
-        } else {
-            $user->avatar_url = null;
-        }
-
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
-            'user' => $user,
+            'user' => $user->fresh(),
         ]);
     }
 }
