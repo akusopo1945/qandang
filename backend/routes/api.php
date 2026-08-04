@@ -12,10 +12,20 @@ Route::get('/goats/{idOrQr}', [GoatController::class, 'show']);
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user();
+        if ($user->avatar) {
+            $user->avatar_url = \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar);
+        } else {
+            $user->avatar_url = null;
+        }
+        return $user;
     });
     Route::put('/user', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Barn Profile API
+    Route::get('/barn-profile', [GoatController::class, 'getBarnProfile']);
+    Route::put('/barn-profile', [GoatController::class, 'updateBarnProfile']);
 
     // Goat API
     Route::get('/goats', [GoatController::class, 'index']);

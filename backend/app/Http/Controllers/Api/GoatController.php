@@ -212,4 +212,43 @@ class GoatController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function getBarnProfile()
+    {
+        $profile = \App\Models\BarnProfile::first();
+        if (!$profile) {
+            $profile = \App\Models\BarnProfile::create([
+                'name' => 'Kandang Qandang',
+                'owner_name' => 'Peternak Qandang',
+                'address' => 'Jl. Tani Mulya No. 12',
+                'capacity' => 100,
+            ]);
+        }
+        return response()->json($profile);
+    }
+
+    public function updateBarnProfile(Request $request)
+    {
+        $profile = \App\Models\BarnProfile::first();
+        if (!$profile) {
+            $profile = new \App\Models\BarnProfile();
+        }
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'capacity' => 'nullable|integer',
+            'description' => 'nullable|string',
+        ]);
+
+        $profile->fill($request->all());
+        $profile->save();
+
+        return response()->json([
+            'message' => 'Profil kandang berhasil diperbarui.',
+            'profile' => $profile,
+        ]);
+    }
 }

@@ -33,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
         if (data['user'] != null) {
           await prefs.setString('user_name', data['user']['name'] ?? '');
           await prefs.setString('user_email', data['user']['email'] ?? '');
+          await prefs.setString('user_avatar', data['user']['avatar_url'] ?? '');
         }
         if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));

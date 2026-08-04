@@ -7,6 +7,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -24,6 +27,12 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['Kredensial yang diberikan salah.'],
             ]);
+        }
+
+        if ($user->avatar) {
+            $user->avatar_url = Storage::disk('public')->url($user->avatar);
+        } else {
+            $user->avatar_url = null;
         }
 
         return response()->json([
@@ -46,6 +55,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
+            'avatar' => 'nullable|string', // Base64
         ]);
 
         $user->name = $request->name;
@@ -55,7 +65,29 @@ class AuthController extends Controller
             $user->password = Hash::make($request->password);
         }
 
+        if ($request->filled('avatar') && !str_contains($request->avatar, '/')) {
+            $imageName = 'avatar_' . $user->id . '_' . time() . '.jpg';
+            $path = 'avatars/' . $imageName;
+            
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read(base64_decode($request->avatar));
+            
+            if ($image->width() > 400) {
+                $image->scale(width: 400);
+            }
+            
+            $encoded = $image->toJpeg(80);
+            Storage::disk('public')->put($path, (string) $encoded);
+            $user->avatar = $path;
+        }
+
         $user->save();
+
+        if ($user->avatar) {
+            $user->avatar_url = Storage::disk('public')->url($user->avatar);
+        } else {
+            $user->avatar_url = null;
+        }
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
