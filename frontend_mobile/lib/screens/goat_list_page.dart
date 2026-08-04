@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/app_services.dart';
 import 'goat_detail_page.dart';
 
@@ -105,6 +107,9 @@ class _GoatListPageState extends State<GoatListPage> {
       if (sire != null) sireName = sire['name'];
     }
 
+    File? goatImageFile;
+    String? base64Image;
+
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -125,6 +130,47 @@ class _GoatListPageState extends State<GoatListPage> {
                 Text(isEdit ? 'Edit Data Ternak' : 'Tambah Ternak Baru (Form Lengkap)', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 
+                Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75, maxWidth: 800);
+                      if (picked != null) {
+                        final file = File(picked.path);
+                        final bytes = await file.readAsBytes();
+                        setModalState(() {
+                          goatImageFile = file;
+                          base64Image = base64Encode(bytes);
+                        });
+                      }
+                    },
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade300),
+                        image: goatImageFile != null
+                            ? DecorationImage(image: FileImage(goatImageFile!), fit: BoxFit.cover)
+                            : (goat?['image_url'] != null
+                                ? DecorationImage(image: NetworkImage(goat!['image_url']), fit: BoxFit.cover)
+                                : null),
+                      ),
+                      child: (goatImageFile == null && goat?['image_url'] == null)
+                          ? const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.camera_alt_outlined, color: Colors.grey),
+                                SizedBox(height: 4),
+                                Text('Foto Kambing', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                              ],
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama / No. Telinga *')),
                 const SizedBox(height: 12),
                 Row(
@@ -271,7 +317,7 @@ class _GoatListPageState extends State<GoatListPage> {
 
                           setModalState(() => isSaving = true);
 
-                          final body = {
+                          final Map<String, dynamic> body = {
                             'name': nameController.text.trim(),
                             'breed': breedController.text.trim(),
                             'barn_block': blockController.text.trim(),
@@ -293,6 +339,10 @@ class _GoatListPageState extends State<GoatListPage> {
                             'dam_id': selectedDamId,
                             'sire_id': selectedSireId,
                           };
+
+                          if (base64Image != null) {
+                            body['image'] = base64Image;
+                          }
 
                           try {
                             final res = isEdit 

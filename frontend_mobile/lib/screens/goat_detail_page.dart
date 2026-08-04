@@ -213,6 +213,79 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
     )));
   }
 
+  Widget _buildQurbanCard(Map<String, dynamic> goat) {
+    if (goat['gender'] != 'male') return const SizedBox.shrink();
+
+    final double currentWeight = double.tryParse(goat['weight']?.toString() ?? '0') ?? 0;
+    final qurbanDate = DateTime(2026, 5, 27);
+    final daysLeft = qurbanDate.difference(DateTime.now()).inDays;
+    final days = daysLeft > 0 ? daysLeft : 0;
+    final double estWeight = currentWeight + (0.15 * days);
+
+    String qurbanClass = 'Belum Cukup Bobot';
+    Color color = Colors.grey;
+
+    if (estWeight >= 50) {
+      qurbanClass = 'Kelas Super (≥50 kg) 🏆';
+      color = Colors.purple;
+    } else if (estWeight >= 40) {
+      qurbanClass = 'Kelas A (40-50 kg) 🥇';
+      color = Colors.green;
+    } else if (estWeight >= 30) {
+      qurbanClass = 'Kelas B (30-40 kg) 🥈';
+      color = Colors.blue;
+    } else if (estWeight >= 20) {
+      qurbanClass = 'Kelas C (20-30 kg) 🥉';
+      color = Colors.orange;
+    }
+
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color.withOpacity(0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.stars, color: color, size: 20),
+                const SizedBox(width: 8),
+                const Text('Target & Kesiapan Idul Adha (Qurban)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+                  child: Text('$daysLeft Hari Lagi', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Proyeksi Kelas Qurban:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(qurbanClass, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Estimasi Bobot Pasca-Fattening:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text('${estWeight.toStringAsFixed(1)} kg', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInfoTab(Map<String, dynamic> goat) {
     final double purchase = (goat['purchase_price'] as num?)?.toDouble() ?? 0;
     final double feedCost = (goat['feeding_cost'] as num?)?.toDouble() ?? 0;
@@ -224,6 +297,8 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
       padding: const EdgeInsets.all(20),
       children: [
         _AIPredictionCard(goatId: goat['id'].toString()),
+        const SizedBox(height: 16),
+        _buildQurbanCard(goat),
         const SizedBox(height: 20),
 
         // Quick Actions Row
