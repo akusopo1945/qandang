@@ -106,12 +106,17 @@ class DbHelper {
     };
   }
 
-  static Future<void> addToQueue(String endpoint, String method, Map<String, dynamic> body) async {
+  static Future<void> deleteGoatLocally(dynamic id) async {
+    final database = await db;
+    await database.delete('goats', where: 'id = ? OR qr_code = ?', whereArgs: [id, id]);
+  }
+
+  static Future<void> addToQueue(String endpoint, String method, Map<String, dynamic>? body) async {
     final database = await db;
     await database.insert('sync_queue', {
       'endpoint': endpoint,
       'method': method,
-      'body': jsonEncode(body),
+      'body': body != null ? jsonEncode(body) : null,
       'created_at': DateTime.now().toIso8601String(),
     });
   }
@@ -123,7 +128,21 @@ class DbHelper {
 
     for (var item in queue) {
       try {
-        final res = await ApiService.post(item['endpoint'] as String, jsonDecode(item['body'] as String));
+        final method = item['method'] as String;
+        final endpoint = item['endpoint'] as String;
+        final bodyStr = item['body'] as String?;
+        final body = bodyStr != null ? jsonDecode(bodyStr) as Map<String, dynamic> : null;
+        http.Response res;
+        if (method == 'POST') {
+          res = await ApiService.post(endpoint, body ?? {});
+        } else if (method == 'PUT') {
+          res = await ApiService.put(endpoint, body ?? {});
+        } else if (method == 'DELETE') {
+          res = await ApiService.delete(endpoint);
+        } else {
+          continue;
+        }
+
         if (res.statusCode == 200 || res.statusCode == 201) {
           await database.delete('sync_queue', where: 'id = ?', whereArgs: [item['id']]);
         }
@@ -156,6 +175,21 @@ class ApiService {
       Uri.parse('$baseUrl$endpoint'),
       headers: await getHeaders(),
       body: jsonEncode(body),
+    );
+  }
+
+  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+    return await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: await getHeaders(),
+      body: jsonEncode(body),
+    );
+  }
+
+  static Future<http.Response> delete(String endpoint) async {
+    return await http.delete(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: await getHeaders(),
     );
   }
 

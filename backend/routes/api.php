@@ -30,6 +30,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Goat API
     Route::get('/goats', [GoatController::class, 'index']);
     Route::post('/goats', [GoatController::class, 'store']);
+    Route::put('/goats/{id}', [GoatController::class, 'update']);
+    Route::delete('/goats/{id}', [GoatController::class, 'destroy']);
     Route::post('/goats/{id}/weight', [GoatController::class, 'storeWeight']);
     Route::post('/goats/{id}/health', [GoatController::class, 'storeHealth']);
     Route::get('/goats/{id}/predict', [GoatController::class, 'predict']);

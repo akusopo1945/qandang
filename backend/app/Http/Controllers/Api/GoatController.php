@@ -51,6 +51,59 @@ class GoatController extends Controller
         return response()->json($goat, 201);
     }
 
+    public function update(Request $request, $id)
+    {
+        $goat = Goat::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string',
+            'qr_code' => 'nullable|string|unique:goats,qr_code,' . $goat->id,
+            'breed' => 'nullable|string',
+            'gender' => 'required|string',
+            'purpose' => 'nullable|string',
+            'reproduction_status' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'initial_weight' => 'nullable|numeric',
+            'current_weight' => 'nullable|numeric',
+            'target_weight' => 'nullable|numeric',
+            'height' => 'nullable|numeric',
+            'description' => 'nullable|string',
+            'dam_id' => 'nullable|exists:goats,id',
+            'sire_id' => 'nullable|exists:goats,id',
+            'image' => 'nullable|string',
+        ]);
+
+        $data = $request->all();
+
+        if ($request->filled('image') && !str_contains($request->image, '/')) {
+            $imageName = 'mobile_' . time() . '.jpg';
+            $path = 'goats/' . $imageName;
+            
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read(base64_decode($request->image));
+            
+            if ($image->width() > 1000) {
+                $image->scale(width: 1000);
+            }
+            
+            $encoded = $image->toJpeg(75);
+            Storage::disk('public')->put($path, (string) $encoded);
+            $data['image'] = $path;
+        }
+
+        $goat->update($data);
+
+        return response()->json($goat);
+    }
+
+    public function destroy($id)
+    {
+        $goat = Goat::findOrFail($id);
+        $goat->delete();
+
+        return response()->json(['message' => 'Ternak berhasil dihapus']);
+    }
+
     public function show($idOrQr)
     {
         $query = Goat::with(['weightLogs', 'healthRecords', 'dam', 'sire']);

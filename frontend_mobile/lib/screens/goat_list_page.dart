@@ -70,15 +70,36 @@ class _GoatListPageState extends State<GoatListPage> {
     }).toList();
   }
 
-  void _showAddGoat(BuildContext context) {
-    final nameController = TextEditingController();
-    final breedController = TextEditingController();
-    final qrController = TextEditingController();
-    String gender = 'male';
-    int? selectedDamId;
-    int? selectedSireId;
+  void _showGoatForm(BuildContext context, {Map<String, dynamic>? goat}) {
+    final bool isEdit = goat != null;
+    final nameController = TextEditingController(text: goat?['name'] ?? '');
+    final breedController = TextEditingController(text: goat?['breed'] ?? '');
+    final qrController = TextEditingController(text: goat?['qr_code'] ?? '');
+    final initialWeightController = TextEditingController(text: goat?['initial_weight']?.toString() ?? '');
+    final currentWeightController = TextEditingController(text: goat?['current_weight']?.toString() ?? goat?['weight']?.toString() ?? '');
+    final heightController = TextEditingController(text: goat?['height']?.toString() ?? '');
+    final targetWeightController = TextEditingController(text: goat?['target_weight']?.toString() ?? '');
+    final descController = TextEditingController(text: goat?['description'] ?? goat?['note'] ?? '');
+    
+    String gender = goat?['gender'] ?? 'male';
+    String purpose = goat?['purpose'] ?? 'fattening';
+    String reproStatus = goat?['reproduction_status'] ?? 'empty';
+    DateTime? birthDate = goat?['birth_date'] != null ? DateTime.tryParse(goat!['birth_date']) : null;
+    
+    int? selectedDamId = goat?['dam_id'];
+    int? selectedSireId = goat?['sire_id'];
+    
     String damName = 'Pilih Induk (Dam)';
     String sireName = 'Pilih Bapak (Sire)';
+    
+    if (selectedDamId != null) {
+      final dam = _allGoats.firstWhere((g) => g['id'] == selectedDamId, orElse: () => null);
+      if (dam != null) damName = dam['name'];
+    }
+    if (selectedSireId != null) {
+      final sire = _allGoats.firstWhere((g) => g['id'] == selectedSireId, orElse: () => null);
+      if (sire != null) sireName = sire['name'];
+    }
 
     bool isSaving = false;
 
@@ -87,125 +108,265 @@ class _GoatListPageState extends State<GoatListPage> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tambah Ternak Baru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama / No. Telinga')),
-              TextField(controller: breedController, decoration: const InputDecoration(labelText: 'Jenis (e.g. Jawa Randu)')),
-              TextField(controller: qrController, decoration: const InputDecoration(labelText: 'QR Code ID')),
-              const SizedBox(height: 16),
-              const Text('Jenis Kelamin'),
-              Row(
-                children: [
-                  Radio<String>(value: 'male', groupValue: gender, onChanged: (v) => setModalState(() => gender = v!)),
-                  const Text('Jantan'),
-                  const SizedBox(width: 20),
-                  Radio<String>(value: 'female', groupValue: gender, onChanged: (v) => setModalState(() => gender = v!)),
-                  const Text('Betina'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text('Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _pickParent(context, 'female', (id, name) => setModalState(() { selectedDamId = id; damName = name; })),
-                      child: Text(damName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _pickParent(context, 'male', (id, name) => setModalState(() { selectedSireId = id; sireName = name; })),
-                      child: Text(sireName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              isSaving
-                  ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
-                  : ElevatedButton(
-                      onPressed: () async {
-                        if (nameController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama tidak boleh kosong')));
-                          return;
-                        }
+        builder: (context, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (context, scrollController) => Padding(
+            padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Text(isEdit ? 'Edit Data Ternak' : 'Tambah Ternak Baru (Form Lengkap)', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama / No. Telinga *')),
+                const SizedBox(height: 12),
+                TextField(controller: qrController, decoration: const InputDecoration(labelText: 'Kode QR / ID (Opsional)')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: ['Jawa Randu', 'Etawa', 'Boer', 'Saanen', 'Boran', 'Lokal'].contains(breedController.text) ? breedController.text : null,
+                  decoration: const InputDecoration(labelText: 'Ras / Jenis Ternak'),
+                  hint: Text(breedController.text.isNotEmpty ? breedController.text : 'Pilih Ras'),
+                  items: ['Jawa Randu', 'Etawa', 'Boer', 'Saanen', 'Boran', 'Lokal'].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                  onChanged: (v) => breedController.text = v ?? '',
+                ),
+                const SizedBox(height: 16),
+                
+                const Text('Jenis Kelamin *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Row(
+                  children: [
+                    Radio<String>(value: 'male', groupValue: gender, onChanged: (v) => setModalState(() => gender = v!)),
+                    const Text('Jantan'),
+                    const SizedBox(width: 20),
+                    Radio<String>(value: 'female', groupValue: gender, onChanged: (v) => setModalState(() => gender = v!)),
+                    const Text('Betina'),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-                        setModalState(() => isSaving = true);
+                DropdownButtonFormField<String>(
+                  value: purpose,
+                  decoration: const InputDecoration(labelText: 'Tujuan Pemeliharaan'),
+                  items: const [
+                    DropdownMenuItem(value: 'fattening', child: Text('Penggemukan (Fattening)')),
+                    DropdownMenuItem(value: 'breeding', child: Text('Pembibitan (Breeding)')),
+                  ],
+                  onChanged: (v) => setModalState(() => purpose = v!),
+                ),
+                const SizedBox(height: 12),
 
-                        final body = {
-                          'name': nameController.text.trim(),
-                          'breed': breedController.text.trim(),
-                          'qr_code': qrController.text.trim(),
-                          'gender': gender,
-                          'dam_id': selectedDamId,
-                          'sire_id': selectedSireId,
-                        };
-                        
-                        try {
-                          final res = await ApiService.post('/goats', body);
-                          if (res.statusCode == 201) {
-                            final newGoat = jsonDecode(res.body);
-                            await DbHelper.saveGoats([newGoat]);
+                if (gender == 'female' && purpose == 'breeding') ...[
+                  DropdownButtonFormField<String>(
+                    value: reproStatus,
+                    decoration: const InputDecoration(labelText: 'Status Reproduksi'),
+                    items: const [
+                      DropdownMenuItem(value: 'empty', child: Text('Kosong')),
+                      DropdownMenuItem(value: 'heat', child: Text('Birahi (Heat)')),
+                      DropdownMenuItem(value: 'pregnant', child: Text('Bunting')),
+                      DropdownMenuItem(value: 'lactating', child: Text('Menyusui')),
+                      DropdownMenuItem(value: 'dry', child: Text('Kering Susu')),
+                    ],
+                    onChanged: (v) => setModalState(() => reproStatus = v!),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: birthDate ?? DateTime.now().subtract(const Duration(days: 180)),
+                      firstDate: DateTime(2010),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setModalState(() => birthDate = picked);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(birthDate == null ? 'Pilih Tanggal Lahir' : 'Tgl Lahir: ${birthDate!.year}-${birthDate!.month.toString().padLeft(2, '0')}-${birthDate!.day.toString().padLeft(2, '0')}'),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Detail Fisik & Bobot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: initialWeightController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Berat Awal (kg)', suffixText: 'kg'))),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: currentWeightController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Berat Saat Ini (kg)', suffixText: 'kg'))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: heightController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tinggi (cm)', suffixText: 'cm'))),
+                    if (purpose == 'fattening') ...[
+                      const SizedBox(width: 12),
+                      Expanded(child: TextField(controller: targetWeightController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target (kg)', suffixText: 'kg'))),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Silsilah (Pedigree)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _pickParent(context, 'female', (id, name) => setModalState(() { selectedDamId = id; damName = name; })),
+                        child: Text(damName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _pickParent(context, 'male', (id, name) => setModalState(() { selectedSireId = id; sireName = name; })),
+                        child: Text(sireName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: descController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Catatan / Deskripsi Tambahan'),
+                ),
+                const SizedBox(height: 24),
+
+                isSaving
+                    ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                    : ElevatedButton(
+                        onPressed: () async {
+                          if (nameController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama kambing wajib diisi')));
+                            return;
+                          }
+
+                          setModalState(() => isSaving = true);
+
+                          final body = {
+                            'name': nameController.text.trim(),
+                            'breed': breedController.text.trim(),
+                            'qr_code': qrController.text.trim(),
+                            'gender': gender,
+                            'purpose': purpose,
+                            'reproduction_status': reproStatus,
+                            'birth_date': birthDate != null ? '${birthDate!.year}-${birthDate!.month.toString().padLeft(2, '0')}-${birthDate!.day.toString().padLeft(2, '0')}' : null,
+                            'initial_weight': double.tryParse(initialWeightController.text.trim()),
+                            'current_weight': double.tryParse(currentWeightController.text.trim()),
+                            'weight': double.tryParse(currentWeightController.text.trim()),
+                            'height': double.tryParse(heightController.text.trim()),
+                            'target_weight': double.tryParse(targetWeightController.text.trim()),
+                            'description': descController.text.trim(),
+                            'note': descController.text.trim(),
+                            'dam_id': selectedDamId,
+                            'sire_id': selectedSireId,
+                          };
+
+                          try {
+                            final res = isEdit 
+                                ? await ApiService.put('/goats/${goat!['id']}', body)
+                                : await ApiService.post('/goats', body);
+
+                            if (res.statusCode == 200 || res.statusCode == 201) {
+                              final updatedGoat = jsonDecode(res.body);
+                              await DbHelper.saveGoats([updatedGoat]);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'Data ternak diperbarui! 🐐' : 'Ternak berhasil didaftarkan! 🐐')));
+                                Navigator.pop(context);
+                              }
+                              _refreshData();
+                            } else {
+                              final err = jsonDecode(res.body);
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal menyimpan data')));
+                              setModalState(() => isSaving = false);
+                            }
+                          } catch (_) {
+                            final targetId = isEdit ? goat!['id'] : DateTime.now().millisecondsSinceEpoch;
+                            final localGoat = {
+                              'id': targetId,
+                              'name': body['name'],
+                              'breed': body['breed'],
+                              'qr_code': body['qr_code'],
+                              'gender': body['gender'],
+                              'weight': body['current_weight'],
+                              'status': goat?['status'] ?? 'Sehat',
+                              'note': body['description'],
+                              'date_of_birth': body['birth_date'],
+                              'weight_logs': goat?['weight_logs'] ?? [],
+                              'health_records': goat?['health_records'] ?? [],
+                              'dam_id': body['dam_id'],
+                              'sire_id': body['sire_id'],
+                            };
+                            await DbHelper.saveGoats([localGoat]);
+                            await DbHelper.addToQueue(
+                              isEdit ? '/goats/${goat!['id']}' : '/goats',
+                              isEdit ? 'PUT' : 'POST',
+                              body,
+                            );
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ternak berhasil didaftarkan! 🐐')));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean disimpan di database lokal. 📡'), backgroundColor: Colors.orange));
                               Navigator.pop(context);
                             }
                             _refreshData();
-                          } else {
-                            final err = jsonDecode(res.body);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal mendaftarkan ternak')));
-                            }
-                            setModalState(() => isSaving = false);
                           }
-                        } catch (_) {
-                          final tempId = DateTime.now().millisecondsSinceEpoch;
-                          final localGoat = {
-                            'id': tempId,
-                            'name': body['name'],
-                            'breed': body['breed'],
-                            'qr_code': body['qr_code'],
-                            'gender': body['gender'],
-                            'weight': null,
-                            'status': 'Sehat',
-                            'note': '',
-                            'date_of_birth': null,
-                            'weight_logs': [],
-                            'health_records': [],
-                            'dam_id': body['dam_id'],
-                            'sire_id': body['sire_id'],
-                          };
-                          await DbHelper.saveGoats([localGoat]);
-                          await DbHelper.addToQueue('/goats', 'POST', body);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean pendaftaran disimpan. 📡'), backgroundColor: Colors.orange));
-                            Navigator.pop(context);
-                          }
-                          _refreshData();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4A6741),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4A6741),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(isEdit ? 'SIMPAN PERUBAHAN' : 'DAFTARKAN TERNAK'),
                       ),
-                      child: const Text('DAFTARKAN'),
-                    ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _deleteGoat(BuildContext context, Map<String, dynamic> goat) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Data Ternak'),
+        content: Text('Apakah Anda yakin ingin menghapus data kambing "${goat['name']}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('HAPUS'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final res = await ApiService.delete('/goats/${goat['id']}');
+      if (res.statusCode == 200) {
+        await DbHelper.deleteGoatLocally(goat['id']);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak berhasil dihapus')));
+        _refreshData();
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
+      }
+    } catch (_) {
+      await DbHelper.deleteGoatLocally(goat['id']);
+      await DbHelper.addToQueue('/goats/${goat['id']}', 'DELETE', null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean hapus disimpan di lokal. 📡'), backgroundColor: Colors.orange));
+        _refreshData();
+      }
+    }
   }
 
   void _pickParent(BuildContext context, String gender, Function(int, String) onPicked) {
@@ -264,7 +425,7 @@ class _GoatListPageState extends State<GoatListPage> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: ['Semua', 'Jawa Randu', 'Etawa', 'Peb', 'Boran'].map((breed) {
+                    children: ['Semua', 'Jawa Randu', 'Etawa', 'Boer', 'Saanen', 'Boran', 'Lokal'].map((breed) {
                       final isSelected = _filterBreed == breed;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
@@ -285,7 +446,7 @@ class _GoatListPageState extends State<GoatListPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddGoat(context),
+        onPressed: () => _showGoatForm(context),
         label: const Text('Tambah Ternak'),
         icon: const Icon(Icons.add),
         backgroundColor: const Color(0xFF4A6741),
@@ -323,17 +484,33 @@ class _GoatListPageState extends State<GoatListPage> {
                           ),
                           title: Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}'),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.chevron_right),
-                              const SizedBox(height: 4),
-                              Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              PopupMenuButton<String>(
+                                onSelected: (val) {
+                                  if (val == 'edit') {
+                                    _showGoatForm(context, goat: goat);
+                                  } else if (val == 'delete') {
+                                    _deleteGoat(context, goat);
+                                  }
+                                },
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit')])),
+                                  PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, color: Colors.red, size: 18), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: Colors.red))])),
+                                ],
+                              ),
                             ],
                           ),
                           onTap: () async {
                             await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
-                            _refreshData(); // Refresh list if detail screen updated something
+                            _refreshData();
                           },
                         ),
                       );

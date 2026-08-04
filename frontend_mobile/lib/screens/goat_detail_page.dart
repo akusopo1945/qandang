@@ -36,25 +36,84 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
     throw Exception('Gagal memuat detail ternak (Offline)');
   }
 
+  Future<void> _deleteGoat(BuildContext context, Map<String, dynamic> goat) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Data Ternak'),
+        content: Text('Apakah Anda yakin ingin menghapus data kambing "${goat['name']}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('HAPUS'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final res = await ApiService.delete('/goats/${goat['id']}');
+      if (res.statusCode == 200) {
+        await DbHelper.deleteGoatLocally(goat['id']);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak berhasil dihapus')));
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
+      }
+    } catch (_) {
+      await DbHelper.deleteGoatLocally(goat['id']);
+      await DbHelper.addToQueue('/goats/${goat['id']}', 'DELETE', null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean hapus disimpan di lokal. 📡'), backgroundColor: Colors.orange));
+        Navigator.pop(context);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Ternak')),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _goatFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 16), Text('Error: ${snapshot.error}')]));
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Detail Ternak')),
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Detail Ternak')),
+              body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 16), Text('Error: ${snapshot.error}')])),
+            );
+          }
           
           final goat = snapshot.data!;
           final weightLogs = (goat['weight_logs'] as List? ?? []).reversed.toList();
           final healthRecords = (goat['health_records'] as List? ?? []).reversed.toList();
 
-          return DefaultTabController(
-            length: 3,
-            child: Column(
-              children: [
-                _buildHeader(goat),
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(goat['name']),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _deleteGoat(context, goat),
+                ),
+              ],
+            ),
+            body: DefaultTabController(
+              length: 3,
+              child: Column(
+                children: [
+                  _buildHeader(goat),
                 const TabBar(
                   labelColor: Color(0xFF4A6741),
                   indicatorColor: Color(0xFF4A6741),
