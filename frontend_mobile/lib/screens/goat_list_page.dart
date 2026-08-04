@@ -80,6 +80,8 @@ class _GoatListPageState extends State<GoatListPage> {
     String damName = 'Pilih Induk (Dam)';
     String sireName = 'Pilih Bapak (Sire)';
 
+    bool isSaving = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -128,67 +130,77 @@ class _GoatListPageState extends State<GoatListPage> {
                 ],
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama tidak boleh kosong')));
-                    return;
-                  }
+              isSaving
+                  ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                  : ElevatedButton(
+                      onPressed: () async {
+                        if (nameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama tidak boleh kosong')));
+                          return;
+                        }
 
-                  final body = {
-                    'name': nameController.text.trim(),
-                    'breed': breedController.text.trim(),
-                    'qr_code': qrController.text.trim(),
-                    'gender': gender,
-                    'dam_id': selectedDamId,
-                    'sire_id': selectedSireId,
-                  };
-                  
-                  Navigator.pop(context);
-                  try {
-                    final res = await ApiService.post('/goats', body);
-                    if (res.statusCode == 201) {
-                      final newGoat = jsonDecode(res.body);
-                      await DbHelper.saveGoats([newGoat]);
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ternak berhasil didaftarkan! 🐐')));
-                      _refreshData();
-                    } else {
-                      final err = jsonDecode(res.body);
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal mendaftarkan ternak')));
-                    }
-                  } catch (_) {
-                    final tempId = DateTime.now().millisecondsSinceEpoch;
-                    final localGoat = {
-                      'id': tempId,
-                      'name': body['name'],
-                      'breed': body['breed'],
-                      'qr_code': body['qr_code'],
-                      'gender': body['gender'],
-                      'weight': null,
-                      'status': 'Sehat',
-                      'note': '',
-                      'date_of_birth': null,
-                      'weight_logs': [],
-                      'health_records': [],
-                      'dam_id': body['dam_id'],
-                      'sire_id': body['sire_id'],
-                    };
-                    await DbHelper.saveGoats([localGoat]);
-                    await DbHelper.addToQueue('/goats', 'POST', body);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean pendaftaran disimpan. 📡'), backgroundColor: Colors.orange));
-                      _refreshData();
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A6741),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('DAFTARKAN'),
-              ),
+                        setModalState(() => isSaving = true);
+
+                        final body = {
+                          'name': nameController.text.trim(),
+                          'breed': breedController.text.trim(),
+                          'qr_code': qrController.text.trim(),
+                          'gender': gender,
+                          'dam_id': selectedDamId,
+                          'sire_id': selectedSireId,
+                        };
+                        
+                        try {
+                          final res = await ApiService.post('/goats', body);
+                          if (res.statusCode == 201) {
+                            final newGoat = jsonDecode(res.body);
+                            await DbHelper.saveGoats([newGoat]);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ternak berhasil didaftarkan! 🐐')));
+                              Navigator.pop(context);
+                            }
+                            _refreshData();
+                          } else {
+                            final err = jsonDecode(res.body);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal mendaftarkan ternak')));
+                            }
+                            setModalState(() => isSaving = false);
+                          }
+                        } catch (_) {
+                          final tempId = DateTime.now().millisecondsSinceEpoch;
+                          final localGoat = {
+                            'id': tempId,
+                            'name': body['name'],
+                            'breed': body['breed'],
+                            'qr_code': body['qr_code'],
+                            'gender': body['gender'],
+                            'weight': null,
+                            'status': 'Sehat',
+                            'note': '',
+                            'date_of_birth': null,
+                            'weight_logs': [],
+                            'health_records': [],
+                            'dam_id': body['dam_id'],
+                            'sire_id': body['sire_id'],
+                          };
+                          await DbHelper.saveGoats([localGoat]);
+                          await DbHelper.addToQueue('/goats', 'POST', body);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean pendaftaran disimpan. 📡'), backgroundColor: Colors.orange));
+                            Navigator.pop(context);
+                          }
+                          _refreshData();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A6741),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('DAFTARKAN'),
+                    ),
             ],
           ),
         ),
