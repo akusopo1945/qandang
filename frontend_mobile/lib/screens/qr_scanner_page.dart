@@ -63,7 +63,33 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   void _onQRCodeScanned(String code) async {
     if (await Vibration.hasVibrator() ?? false) Vibration.vibrate(duration: 100);
-    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (context) => _QuickInfoBottomSheet(qrCode: code)).then((_) => setState(() => _isScanning = true));
+
+    String cleanCode = code.trim();
+    if (cleanCode.startsWith('http://') || cleanCode.startsWith('https://')) {
+      try {
+        final uri = Uri.parse(cleanCode);
+        final pathSegments = uri.pathSegments;
+        if (pathSegments.contains('catalog')) {
+          final index = pathSegments.indexOf('catalog');
+          if (index != -1 && index + 1 < pathSegments.length) {
+            cleanCode = pathSegments[index + 1];
+          }
+        } else if (pathSegments.isNotEmpty) {
+          cleanCode = pathSegments.last;
+        }
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      showModalBottomSheet(
+        context: context, 
+        isScrollControlled: true, 
+        backgroundColor: Colors.transparent, 
+        builder: (context) => _QuickInfoBottomSheet(qrCode: cleanCode)
+      ).then((_) {
+        if (mounted) setState(() => _isScanning = true);
+      });
+    }
   }
 }
 
