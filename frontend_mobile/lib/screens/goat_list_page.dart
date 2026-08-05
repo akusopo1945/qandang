@@ -28,52 +28,11 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
   @override
   void initState() {
     super.initState();
-    _refreshData();
-  }
-
-  Future<void> _refreshData() async {
-    if (mounted) setState(() => _isLoading = true);
-    try {
-      final value = await _fetchGoats();
-      if (mounted) {
-        setState(() {
-          _allGoats = value;
-          _applyFilter();
-        });
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    // Inisiasi awal data dilakukan reaktif oleh Riverpod
   }
 
   void _applyFilter() {
-    setState(() {
-      _filteredGoats = _allGoats.where((goat) {
-        final matchesSearch = goat['name'].toLowerCase().contains(_searchQuery.toLowerCase()) || 
-                             (goat['qr_code'] ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
-        final matchesBreed = _filterBreed == 'Semua' || goat['breed'] == _filterBreed;
-        return matchesSearch && matchesBreed;
-      }).toList();
-    });
-  }
-
-  Future<List<dynamic>> _fetchGoats() async {
-    try {
-      final res = await ApiService.get('/goats');
-      if (res.statusCode == 200) {
-        final goats = jsonDecode(res.body);
-        await DbHelper.saveGoats(goats);
-        return goats;
-      }
-    } catch (_) {
-    }
-    final localGoats = await DbHelper.getGoats();
-    return localGoats.map((g) => {
-      ...g,
-      'weight_logs': jsonDecode(g['weight_logs'] as String? ?? '[]'),
-      'health_records': jsonDecode(g['health_records'] as String? ?? '[]'),
-    }).toList();
+    setState(() {}); // Memaksa rebuild UI untuk me-run filter lokal di dalam method build
   }
 
   void _showGoatForm(BuildContext context, {Map<String, dynamic>? goat}) {
@@ -101,13 +60,16 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
     
     String damName = 'Pilih Induk (Dam)';
     String sireName = 'Pilih Bapak (Sire)';
-    
+
+    // Mengambil data kambing terbaru secara langsung dari provider
+    final goatsData = ref.read(goatListProvider).value ?? [];
+
     if (selectedDamId != null) {
-      final dam = _allGoats.firstWhere((g) => g['id'] == selectedDamId, orElse: () => null);
+      final dam = goatsData.firstWhere((g) => g['id'] == selectedDamId, orElse: () => null);
       if (dam != null) damName = dam['name'];
     }
     if (selectedSireId != null) {
-      final sire = _allGoats.firstWhere((g) => g['id'] == selectedSireId, orElse: () => null);
+      final sire = goatsData.firstWhere((g) => g['id'] == selectedSireId, orElse: () => null);
       if (sire != null) sireName = sire['name'];
     }
 
@@ -681,7 +643,6 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
                             borderRadius: BorderRadius.circular(16),
                             onTap: () async {
                               await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
-                              _refreshData();
                             },
                             onLongPress: () => _showActionBottomSheet(context, goat),
                             child: Padding(

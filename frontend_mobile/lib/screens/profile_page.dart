@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/providers.dart';
 import 'login_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
