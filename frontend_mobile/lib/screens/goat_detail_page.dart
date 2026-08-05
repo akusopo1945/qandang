@@ -66,7 +66,12 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           Navigator.pop(context);
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
+        String msg = 'Gagal menghapus (${res.statusCode})';
+        try {
+          final err = jsonDecode(res.body);
+          if (err['message'] != null) msg = err['message'];
+        } catch (_) {}
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (_) {
       await DbHelper.deleteGoatLocally(goat['id']);
@@ -116,25 +121,26 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
               child: Column(
                 children: [
                   _buildHeader(goat),
-                const TabBar(
-                  labelColor: Color(0xFF4A6741),
-                  indicatorColor: Color(0xFF4A6741),
-                  tabs: [
-                    Tab(text: 'Info'),
-                    Tab(text: 'Berat'),
-                    Tab(text: 'Kesehatan'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildInfoTab(goat),
-                      _buildWeightTab(weightLogs),
-                      _buildHealthTab(healthRecords),
+                  const TabBar(
+                    labelColor: Color(0xFF4A6741),
+                    indicatorColor: Color(0xFF4A6741),
+                    tabs: [
+                      Tab(text: 'Info'),
+                      Tab(text: 'Berat'),
+                      Tab(text: 'Kesehatan'),
                     ],
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildInfoTab(goat),
+                        _buildWeightTab(weightLogs),
+                        _buildHealthTab(healthRecords),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },

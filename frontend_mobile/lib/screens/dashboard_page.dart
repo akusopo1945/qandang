@@ -5,6 +5,7 @@ import '../services/app_services.dart';
 import '../services/notification_service.dart';
 import 'feed_calculator_page.dart';
 import 'farm_calendar_page.dart';
+import 'barn_monitoring_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});

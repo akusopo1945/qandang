@@ -76,6 +76,9 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 'panels::head.end',
                 fn (): string => '
+                    <link rel="icon" type="image/x-icon" href="' . asset('favicon.ico') . '">
+                    <link rel="icon" type="image/png" sizes="32x32" href="' . asset('images/logo.webp') . '">
+                    <link rel="apple-touch-icon" href="' . asset('images/logo.webp') . '">
                     <meta property="og:title" content="Qandang - Smart Livestock Monitoring">
                     <meta property="og:description" content="Platform smart farming untuk monitoring ternak kambing digital menggunakan QR Code.">
                     <meta property="og:image" content="' . asset('images/og-image.jpg') . '">

@@ -434,7 +434,12 @@ class _GoatListPageState extends State<GoatListPage> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak berhasil dihapus')));
         _refreshData();
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
+        String msg = 'Gagal menghapus (${res.statusCode})';
+        try {
+          final err = jsonDecode(res.body);
+          if (err['message'] != null) msg = err['message'];
+        } catch (_) {}
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (_) {
       await DbHelper.deleteGoatLocally(goat['id']);

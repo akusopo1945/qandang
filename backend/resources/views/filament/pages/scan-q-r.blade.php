@@ -127,47 +127,60 @@
 
         function initializeCameraList() {
             if (typeof Html5Qrcode === 'undefined') {
-                setTimeout(initializeCameraList, 500);
+                setTimeout(initializeCameraList, 300);
                 return;
             }
 
-            Html5Qrcode.getCameras().then(devices => {
-                const cameraSelect = document.getElementById('camera-select');
-                const placeholder = document.getElementById('scanner-placeholder');
-                
-                if (devices && devices.length) {
-                    cameraSelect.innerHTML = '';
-                    devices.forEach(device => {
-                        const option = document.createElement('option');
-                        option.value = device.id;
-                        option.text = device.label || `Kamera ${cameraSelect.options.length + 1}`;
-                        cameraSelect.appendChild(option);
-                    });
+            const cameraSelect = document.getElementById('camera-select');
+            const placeholder = document.getElementById('scanner-placeholder');
 
-                    if (placeholder) {
-                        placeholder.innerHTML = `
-                            <svg class="w-16 h-16 text-[#4a6741]/40 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0120 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <p class="text-xs text-[#4a6741] font-bold">Kamera Terdeteksi & Siap</p>
-                            <p class="text-[10px] text-gray-400 mt-1">Pilih kamera lalu klik Mulai Scan untuk memindai QR Code.</p>
-                        `;
+            // Request permission explicitly first if needed to get labels & device list
+            navigator.mediaDevices?.getUserMedia({ video: true })
+                .then(stream => {
+                    // Stop initial test stream right away
+                    stream.getTracks().forEach(track => track.stop());
+                    return Html5Qrcode.getCameras();
+                })
+                .catch(err => {
+                    // Fallback to directly getCameras if getUserMedia error/rejected
+                    return Html5Qrcode.getCameras();
+                })
+                .then(devices => {
+                    if (devices && devices.length) {
+                        cameraSelect.innerHTML = '';
+                        devices.forEach(device => {
+                            const option = document.createElement('option');
+                            option.value = device.id;
+                            option.text = device.label || `Kamera ${cameraSelect.options.length + 1}`;
+                            cameraSelect.appendChild(option);
+                        });
+
+                        if (placeholder) {
+                            placeholder.innerHTML = `
+                                <svg class="w-16 h-16 text-[#4a6741]/40 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0120 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <p class="text-xs text-[#4a6741] font-bold">Kamera Terdeteksi & Siap</p>
+                                <p class="text-[10px] text-gray-400 mt-1">Pilih kamera lalu klik Mulai Scan untuk memindai QR Code.</p>
+                            `;
+                        }
+                    } else {
+                        cameraSelect.innerHTML = '<option value="">Kamera tidak ditemukan</option>';
+                        if (placeholder) {
+                            placeholder.innerHTML = `
+                                <svg class="w-16 h-16 text-rose-500/30 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <p class="text-xs text-rose-500 font-bold">Kamera Tidak Ditemukan</p>
+                                <p class="text-[10px] text-gray-400 mt-1">Pastikan izin kamera browser diaktifkan atau periksa koneksi kamera.</p>
+                            `;
+                        }
                     }
-                } else {
-                    cameraSelect.innerHTML = '<option value="">Kamera tidak ditemukan</option>';
-                    if (placeholder) {
-                        placeholder.innerHTML = `
-                            <svg class="w-16 h-16 text-rose-500/30 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <p class="text-xs text-rose-500 font-bold">Kamera Tidak Ditemukan</p>
-                            <p class="text-[10px] text-gray-400 mt-1">Pastikan izin kamera browser diaktifkan.</p>
-                        `;
-                    }
-                }
-            }).catch(err => {
-                console.error(err);
-            });
+                })
+                .catch(err => {
+                    console.error("Camera enumeration error:", err);
+                    cameraSelect.innerHTML = '<option value="">Gagal mendeteksi kamera</option>';
+                });
         }
 
         function startScanning() {
