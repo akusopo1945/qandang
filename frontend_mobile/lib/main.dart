@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
 import 'services/notification_service.dart';
 import 'services/app_services.dart';
+import 'services/providers.dart';
 import 'screens/login_page.dart';
 import 'screens/main_navigation.dart';
 

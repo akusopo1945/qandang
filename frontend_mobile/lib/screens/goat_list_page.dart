@@ -65,12 +65,12 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
     final goatsData = ref.read(goatListProvider).value ?? [];
 
     if (selectedDamId != null) {
-      final dam = goatsData.firstWhere((g) => g['id'] == selectedDamId, orElse: () => null);
-      if (dam != null) damName = dam['name'];
+      final List<dynamic> matchingDams = goatsData.where((g) => g['id'] == selectedDamId).toList();
+      if (matchingDams.isNotEmpty) damName = matchingDams.first['name'];
     }
     if (selectedSireId != null) {
-      final sire = goatsData.firstWhere((g) => g['id'] == selectedSireId, orElse: () => null);
-      if (sire != null) sireName = sire['name'];
+      final List<dynamic> matchingSires = goatsData.where((g) => g['id'] == selectedSireId).toList();
+      if (matchingSires.isNotEmpty) sireName = matchingSires.first['name'];
     }
 
     File? goatImageFile;
@@ -408,19 +408,19 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
       final res = await ApiService.delete('/goats/${goat['id']}');
       if (res.statusCode == 200) {
         await DbHelper.deleteGoatLocally(goat['id']);
+        ref.read(goatListProvider.notifier).loadGoats(); // Refresh data via Riverpod
         try { Vibration.vibrate(duration: 100); } catch (_) {}
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak berhasil dihapus')));
-        _refreshData();
       } else {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
       }
     } catch (_) {
       await DbHelper.deleteGoatLocally(goat['id']);
       await DbHelper.addToQueue('/goats/${goat['id']}', 'DELETE', null);
+      ref.read(goatListProvider.notifier).loadGoats(); // Refresh data lokal via Riverpod
       try { Vibration.vibrate(duration: 100); } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean hapus disimpan di lokal. 📡'), backgroundColor: Colors.orange));
-        _refreshData();
       }
     }
   }
@@ -444,7 +444,7 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
               title: const Text('Lihat Detail Ternak'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString()))).then((_) => _refreshData());
+                Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString()))).then((_) => ref.read(goatListProvider.notifier).loadGoats());
               },
             ),
             ListTile(
@@ -620,79 +620,76 @@ class _GoatListPageState extends ConsumerState<GoatListPage> {
                       return false;
                     }
                   },
-                        background: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          alignment: Alignment.centerLeft,
-                          decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
-                          child: const Row(children: [Icon(Icons.edit, color: Colors.white), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                        ),
-                        secondaryBackground: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          alignment: Alignment.centerRight,
-                          decoration: BoxDecoration(color: Colors.red.shade600, borderRadius: BorderRadius.circular(16)),
-                          child: const Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), SizedBox(width: 8), Icon(Icons.delete, color: Colors.white)]),
-                        ),
-                        child: Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16), 
-                            side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
-                          ),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () async {
-                              await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
-                            },
-                            onLongPress: () => _showActionBottomSheet(context, goat),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  Hero(
-                                    tag: 'goat_image_${goat['id']}',
-                                    child: goat['image_url'] != null && goat['image_url'].toString().isNotEmpty
-                                        ? PremiumImage(
-                                            imageUrl: goat['image_url'],
-                                            width: 50,
-                                            height: 50,
-                                            borderRadius: BorderRadius.circular(12),
-                                          )
-                                        : Container(
-                                            width: 50,
-                                            height: 50,
-                                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                                            child: Icon(Icons.pets, color: statusColor),
-                                          ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                        const SizedBox(height: 4),
-                                        Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                      ],
+                  background: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
+                    child: const Row(children: [Icon(Icons.edit, color: Colors.white), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
+                  ),
+                  secondaryBackground: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.centerRight,
+                    decoration: BoxDecoration(color: Colors.red.shade600, borderRadius: BorderRadius.circular(16)),
+                    child: const Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), SizedBox(width: 8), Icon(Icons.delete, color: Colors.white)]),
+                  ),
+                  child: Card(
+                    elevation: 0,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16), 
+                      side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
+                      },
+                      onLongPress: () => _showActionBottomSheet(context, goat),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Hero(
+                              tag: 'goat_image_${goat['id']}',
+                              child: goat['image_url'] != null && goat['image_url'].toString().isNotEmpty
+                                  ? PremiumImage(
+                                      imageUrl: goat['image_url'],
+                                      width: 50,
+                                      height: 50,
+                                      borderRadius: BorderRadius.circular(12),
+                                    )
+                                  : Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                      child: Icon(Icons.pets, color: statusColor),
                                     ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                                        child: Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ],
-                                  ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  const SizedBox(height: 4),
+                                  Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
                                 ],
                               ),
                             ),
-                          ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                  child: Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 );
               },
