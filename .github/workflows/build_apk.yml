@@ -54,8 +54,8 @@ jobs:
           # Patch AndroidManifest.xml to add CAMERA permission for mobile_scanner and USE_BIOMETRIC
           sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' android/app/src/main/AndroidManifest.xml
           # Patch MainActivity.kt to use FlutterFragmentActivity for local_auth
-          sed -i 's/import io.flutter.embedding.android.FlutterActivity/import io.flutter.embedding.android.FlutterFragmentActivity/g' android/app/src/main/kotlin/com/qandang/app/MainActivity.kt
-          sed -i 's/class MainActivity: FlutterActivity()/class MainActivity: FlutterFragmentActivity()/g' android/app/src/main/kotlin/com/qandang/app/MainActivity.kt
+          sed -i 's/import io.flutter.embedding.android.FlutterActivity/import io.flutter.embedding.android.FlutterFragmentActivity/g' android/app/src/main/kotlin/com/qandang/app/qandang/MainActivity.kt
+          sed -i 's/class MainActivity: FlutterActivity()/class MainActivity: FlutterFragmentActivity()/g' android/app/src/main/kotlin/com/qandang/app/qandang/MainActivity.kt
           # Patch minSdkVersion from 19 to 21 to support mobile_scanner
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           # Patch Kotlin version in settings.gradle (Modern Flutter 3.19+)
