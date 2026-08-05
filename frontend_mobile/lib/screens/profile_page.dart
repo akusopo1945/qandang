@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/local_auth.dart';
 import '../services/providers.dart';
 import 'login_page.dart';
 
