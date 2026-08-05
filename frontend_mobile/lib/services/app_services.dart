@@ -99,10 +99,23 @@ class DbHelper {
     final res = await database.query('goats', where: 'id = ? OR qr_code = ?', whereArgs: [idOrQr, idOrQr]);
     if (res.isEmpty) return null;
     final goat = Map<String, dynamic>.from(res.first);
+
+    List parseList(dynamic raw) {
+      if (raw == null) return [];
+      if (raw is List) return raw;
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) return decoded;
+        } catch (_) {}
+      }
+      return [];
+    }
+
     return {
       ...goat,
-      'weight_logs': jsonDecode(goat['weight_logs']),
-      'health_records': jsonDecode(goat['health_records']),
+      'weight_logs': parseList(goat['weight_logs']),
+      'health_records': parseList(goat['health_records']),
     };
   }
 

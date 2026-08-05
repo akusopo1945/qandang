@@ -101,13 +101,25 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
           );
         }
         
+        List parseList(dynamic raw) {
+          if (raw == null) return [];
+          if (raw is List) return raw;
+          if (raw is String && raw.isNotEmpty) {
+            try {
+              final d = jsonDecode(raw);
+              if (d is List) return d;
+            } catch (_) {}
+          }
+          return [];
+        }
+
         final goat = snapshot.data!;
-        final weightLogs = (goat['weight_logs'] as List? ?? []).reversed.toList();
-        final healthRecords = (goat['health_records'] as List? ?? []).reversed.toList();
+        final weightLogs = parseList(goat['weight_logs']).reversed.toList();
+        final healthRecords = parseList(goat['health_records']).reversed.toList();
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(goat['name']),
+            title: Text(goat['name'] ?? 'Detail Ternak'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -147,11 +159,23 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   }
 
   Widget _buildHeader(Map<String, dynamic> goat) {
+    List parseList(dynamic raw) {
+      if (raw == null) return [];
+      if (raw is List) return raw;
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final d = jsonDecode(raw);
+          if (d is List) return d;
+        } catch (_) {}
+      }
+      return [];
+    }
+
     List<String> images = [];
-    if (goat['image_url'] != null) images.add(goat['image_url']);
-    final healthRecords = goat['health_records'] as List? ?? [];
+    if (goat['image_url'] != null) images.add(goat['image_url'].toString());
+    final healthRecords = parseList(goat['health_records']);
     for (var record in healthRecords) {
-      if (record['image_url'] != null) images.add(record['image_url']);
+      if (record is Map && record['image_url'] != null) images.add(record['image_url'].toString());
     }
 
     return Container(
@@ -187,7 +211,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
               child: const Icon(Icons.pets, size: 40, color: Color(0xFF4A6741)),
             ),
           const SizedBox(height: 16),
-          Text(goat['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(goat['name'] ?? 'Kambing Tanpa Nama', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           Text('Tag: ${goat['qr_code'] ?? '-'}', style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 12),
           Container(
@@ -220,7 +244,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   Widget _buildQurbanCard(Map<String, dynamic> goat) {
     if (goat['gender'] != 'male') return const SizedBox.shrink();
 
-    final double currentWeight = double.tryParse(goat['weight']?.toString() ?? '0') ?? 0;
+    final double currentWeight = double.tryParse(goat['weight']?.toString() ?? goat['current_weight']?.toString() ?? '0') ?? 0;
     final qurbanDate = DateTime(2026, 5, 27);
     final daysLeft = qurbanDate.difference(DateTime.now()).inDays;
     final days = daysLeft > 0 ? daysLeft : 0;
@@ -291,9 +315,9 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
   }
 
   Widget _buildInfoTab(Map<String, dynamic> goat) {
-    final double purchase = (goat['purchase_price'] as num?)?.toDouble() ?? 0;
-    final double feedCost = (goat['feeding_cost'] as num?)?.toDouble() ?? 0;
-    final double marketPrice = (goat['price'] as num?)?.toDouble() ?? 0;
+    final double purchase = double.tryParse(goat['purchase_price']?.toString() ?? '0') ?? 0;
+    final double feedCost = double.tryParse(goat['feeding_cost']?.toString() ?? '0') ?? 0;
+    final double marketPrice = double.tryParse(goat['price']?.toString() ?? '0') ?? 0;
     final double totalCost = purchase + feedCost;
     final double estProfit = marketPrice > 0 ? (marketPrice - totalCost) : 0;
 
