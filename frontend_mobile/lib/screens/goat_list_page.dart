@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:vibration/vibration.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/app_services.dart';
+import '../widgets/premium_image.dart';
 import 'goat_detail_page.dart';
 
 class GoatListPage extends StatefulWidget {
@@ -671,10 +672,21 @@ class _GoatListPageState extends State<GoatListPage> {
                               padding: const EdgeInsets.all(12),
                               child: Row(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                                    child: Icon(Icons.pets, color: statusColor),
+                                  Hero(
+                                    tag: 'goat_image_${goat['id']}',
+                                    child: goat['image_url'] != null && goat['image_url'].toString().isNotEmpty
+                                        ? PremiumImage(
+                                            imageUrl: goat['image_url'],
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: BorderRadius.circular(12),
+                                          )
+                                        : Container(
+                                            width: 50,
+                                            height: 50,
+                                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                            child: Icon(Icons.pets, color: statusColor),
+                                          ),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(

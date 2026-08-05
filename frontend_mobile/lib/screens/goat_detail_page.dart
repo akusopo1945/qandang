@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'feed_calculator_page.dart';
 import '../services/app_services.dart';
+import '../widgets/premium_image.dart';
 
 class GoatDetailPage extends StatefulWidget {
   final String id;
@@ -192,13 +193,20 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
                 itemCount: images.length,
                 itemBuilder: (context, i) => GestureDetector(
                   onTap: () => _showFullScreenImage(context, images[i]),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    width: 120,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(image: NetworkImage(images[i]), fit: BoxFit.cover),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                  child: Hero(
+                    tag: i == 0 ? 'goat_image_${goat['id']}' : 'goat_image_${goat['id']}_$i',
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                      ),
+                      child: PremiumImage(
+                        imageUrl: images[i],
+                        width: 120,
+                        height: 120,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -235,7 +243,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
         child: InteractiveViewer(
           minScale: 0.5,
           maxScale: 4.0,
-          child: Image.network(imageUrl, fit: BoxFit.contain),
+          child: PremiumImage(imageUrl: imageUrl),
         ),
       ),
     )));
@@ -672,9 +680,11 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
                   child: Container(
                     height: 150, width: double.infinity,
                     margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                    decoration: BoxDecoration(
+                    child: PremiumImage(
+                      imageUrl: record['image_url'],
+                      width: double.infinity,
+                      height: 150,
                       borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(image: NetworkImage(record['image_url']), fit: BoxFit.cover),
                     ),
                   ),
                 ),

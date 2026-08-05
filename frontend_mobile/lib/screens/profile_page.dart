@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/app_services.dart';
+import '../widgets/premium_image.dart';
 import 'login_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -114,13 +115,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    CircleAvatar(
+                    PremiumAvatar(
                       radius: 45,
-                      backgroundColor: const Color(0xFF4A6741).withOpacity(0.1),
-                      backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-                      child: _avatarUrl == null
-                          ? const Icon(Icons.person, size: 45, color: Color(0xFF4A6741))
-                          : null,
+                      imageUrl: _avatarUrl,
                     ),
                     const SizedBox(height: 16),
                     Text(

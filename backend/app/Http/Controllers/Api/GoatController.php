@@ -41,7 +41,7 @@ class GoatController extends Controller
 
         $data = $request->all();
 
-        if ($request->filled('image') && !str_contains($request->image, '/')) {
+        if ($request->filled('image') && !str_contains($request->image, '.')) {
             $imageName = 'mobile_' . time() . '.jpg';
             $path = 'goats/' . $imageName;
             
@@ -89,7 +89,7 @@ class GoatController extends Controller
 
         $data = $request->all();
 
-        if ($request->filled('image') && !str_contains($request->image, '/')) {
+        if ($request->filled('image') && !str_contains($request->image, '.')) {
             $imageName = 'mobile_' . time() . '.jpg';
             $path = 'goats/' . $imageName;
             
@@ -177,7 +177,7 @@ class GoatController extends Controller
             'next_scheduled_date' => $request->next_scheduled_date,
         ];
 
-        if ($request->filled('image') && !str_contains($request->image, '/')) {
+        if ($request->filled('image') && !str_contains($request->image, '.')) {
             $imageName = 'mobile_' . time() . '.jpg';
             $path = 'health-records/' . $imageName;
             

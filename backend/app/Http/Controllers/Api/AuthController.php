@@ -59,7 +59,7 @@ class AuthController extends Controller
             $user->password = Hash::make($request->password);
         }
 
-        if ($request->filled('avatar') && !str_contains($request->avatar, '/')) {
+        if ($request->filled('avatar') && !str_contains($request->avatar, '.')) {
             $imageName = 'avatar_' . $user->id . '_' . time() . '.jpg';
             $path = 'avatars/' . $imageName;
             
