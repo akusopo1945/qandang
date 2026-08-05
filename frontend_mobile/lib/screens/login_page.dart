@@ -18,8 +18,31 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _biometricConfigured = false;
   bool _loading = false;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricPreference();
+  }
+
+  _checkBiometricPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('biometric_enabled') ?? false;
+    final token = prefs.getString('token');
+    
+    if (isEnabled && token != null && token.isNotEmpty) {
+      setState(() {
+        _biometricConfigured = true;
+      });
+      // Pemicu otomatis prompt login sidik jari
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _biometricLogin();
+      });
+    }
+  }
 
   _login() async {
     setState(() => _loading = true);

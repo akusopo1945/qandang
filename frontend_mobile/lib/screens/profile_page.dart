@@ -24,6 +24,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   int _goatCount = 0;
   int _syncQueueCount = 0;
   bool _syncing = false;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       _email = prefs.getString('user_email') ?? 'peternak@qandang.com';
       _avatarUrl = prefs.getString('user_avatar');
       if (_avatarUrl?.isEmpty == true) _avatarUrl = null;
+      _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
     });
   }
 
@@ -208,6 +210,59 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   _fetchRemoteProfile();
                 }
               },
+            ),
+            
+            // Switch Keamanan Biometrik
+            Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: SwitchListTile(
+                secondary: const Icon(Icons.fingerprint, color: Color(0xFF4A6741)),
+                title: const Text('Keamanan Biometrik', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Sidik jari / Face ID untuk masuk cepat', style: TextStyle(fontSize: 11)),
+                value: _biometricEnabled,
+                activeColor: const Color(0xFF4A6741),
+                onChanged: (bool value) async {
+                  final prefs = await SharedPreferences.getInstance();
+                  if (value) {
+                    // Minta verifikasi sekali sebelum mengaktifkan
+                    try {
+                      final auth = LocalAuthentication();
+                      final bool canAuthenticate = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+                      if (!canAuthenticate) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perangkat tidak mendukung biometrik')));
+                        return;
+                      }
+                      
+                      final bool didAuthenticate = await auth.authenticate(
+                        localizedReason: 'Konfirmasi biometrik untuk mengaktifkan fitur ini',
+                        options: const AuthenticationOptions(stickyAuth: true, biometricOnly: true),
+                      );
+
+                      if (didAuthenticate) {
+                        await prefs.setBool('biometric_enabled', true);
+                        setState(() {
+                          _biometricEnabled = true;
+                        });
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometrik berhasil diaktifkan!')));
+                      }
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  } else {
+                    // Menonaktifkan biometrik
+                    await prefs.setBool('biometric_enabled', false);
+                    setState(() {
+                      _biometricEnabled = false;
+                    });
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometrik dinonaktifkan')));
+                  }
+                },
+              ),
             ),
             _buildProfileMenu(
               context,
