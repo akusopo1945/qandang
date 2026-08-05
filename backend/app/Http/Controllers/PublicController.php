@@ -42,7 +42,7 @@ class PublicController extends Controller
     public function show($qr_code)
     {
         $goat = Goat::where('qr_code', $qr_code)
-            ->whereIn('sale_status', ['for_sale', 'auction', 'sold'])
+            ->orWhere('id', $qr_code)
             ->firstOrFail();
 
         return view('marketplace.show', compact('goat'));
