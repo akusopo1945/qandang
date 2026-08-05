@@ -85,66 +85,64 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _goatFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              appBar: AppBar(title: const Text('Detail Ternak')),
-              body: const Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            return Scaffold(
-              appBar: AppBar(title: const Text('Detail Ternak')),
-              body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 16), Text('Error: ${snapshot.error}')])),
-            );
-          }
-          
-          final goat = snapshot.data!;
-          final weightLogs = (goat['weight_logs'] as List? ?? []).reversed.toList();
-          final healthRecords = (goat['health_records'] as List? ?? []).reversed.toList();
-
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _goatFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(
-              title: Text(goat['name']),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => _deleteGoat(context, goat),
+            appBar: AppBar(title: const Text('Detail Ternak')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Detail Ternak')),
+            body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 16), Text('Error: ${snapshot.error}')])),
+          );
+        }
+        
+        final goat = snapshot.data!;
+        final weightLogs = (goat['weight_logs'] as List? ?? []).reversed.toList();
+        final healthRecords = (goat['health_records'] as List? ?? []).reversed.toList();
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(goat['name']),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: () => _deleteGoat(context, goat),
+              ),
+            ],
+          ),
+          body: DefaultTabController(
+            length: 3,
+            child: Column(
+              children: [
+                _buildHeader(goat),
+                const TabBar(
+                  labelColor: Color(0xFF4A6741),
+                  indicatorColor: Color(0xFF4A6741),
+                  tabs: [
+                    Tab(text: 'Info'),
+                    Tab(text: 'Berat'),
+                    Tab(text: 'Kesehatan'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _buildInfoTab(goat),
+                      _buildWeightTab(weightLogs),
+                      _buildHealthTab(healthRecords),
+                    ],
+                  ),
                 ),
               ],
             ),
-            body: DefaultTabController(
-              length: 3,
-              child: Column(
-                children: [
-                  _buildHeader(goat),
-                  const TabBar(
-                    labelColor: Color(0xFF4A6741),
-                    indicatorColor: Color(0xFF4A6741),
-                    tabs: [
-                      Tab(text: 'Info'),
-                      Tab(text: 'Berat'),
-                      Tab(text: 'Kesehatan'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildInfoTab(goat),
-                        _buildWeightTab(weightLogs),
-                        _buildHealthTab(healthRecords),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
