@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vibration/vibration.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/app_services.dart';
 import 'goat_detail_page.dart';
 
@@ -36,7 +38,6 @@ class _GoatListPageState extends State<GoatListPage> {
         });
       }
     } catch (_) {
-      // Fail silently, fallback is local DB via _fetchGoats
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -62,7 +63,6 @@ class _GoatListPageState extends State<GoatListPage> {
         return goats;
       }
     } catch (_) {
-      // Fallback
     }
     final localGoats = await DbHelper.getGoats();
     return localGoats.map((g) => {
@@ -352,6 +352,7 @@ class _GoatListPageState extends State<GoatListPage> {
                             if (res.statusCode == 200 || res.statusCode == 201) {
                               final updatedGoat = jsonDecode(res.body);
                               await DbHelper.saveGoats([updatedGoat]);
+                              try { Vibration.vibrate(duration: 80); } catch (_) {}
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'Data ternak diperbarui! 🐐' : 'Ternak berhasil didaftarkan! 🐐')));
                                 Navigator.pop(context);
@@ -385,6 +386,7 @@ class _GoatListPageState extends State<GoatListPage> {
                               isEdit ? 'PUT' : 'POST',
                               body,
                             );
+                            try { Vibration.vibrate(duration: 80); } catch (_) {}
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean disimpan di database lokal. 📡'), backgroundColor: Colors.orange));
                               Navigator.pop(context);
@@ -431,24 +433,77 @@ class _GoatListPageState extends State<GoatListPage> {
       final res = await ApiService.delete('/goats/${goat['id']}');
       if (res.statusCode == 200) {
         await DbHelper.deleteGoatLocally(goat['id']);
+        try { Vibration.vibrate(duration: 100); } catch (_) {}
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak berhasil dihapus')));
         _refreshData();
       } else {
-        String msg = 'Gagal menghapus (${res.statusCode})';
-        try {
-          final err = jsonDecode(res.body);
-          if (err['message'] != null) msg = err['message'];
-        } catch (_) {}
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menghapus data ternak')));
       }
     } catch (_) {
       await DbHelper.deleteGoatLocally(goat['id']);
       await DbHelper.addToQueue('/goats/${goat['id']}', 'DELETE', null);
+      try { Vibration.vibrate(duration: 100); } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean hapus disimpan di lokal. 📡'), backgroundColor: Colors.orange));
         _refreshData();
       }
     }
+  }
+
+  void _showActionBottomSheet(BuildContext context, Map<String, dynamic> goat) {
+    try { Vibration.vibrate(duration: 40); } catch (_) {}
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(goat['name'] ?? 'Pilih Aksi', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.visibility_outlined, color: Colors.blue),
+              title: const Text('Lihat Detail Ternak'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString()))).then((_) => _refreshData());
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: Color(0xFF4A6741)),
+              title: const Text('Edit Data Ternak'),
+              onTap: () {
+                Navigator.pop(context);
+                _showGoatForm(context, goat: goat);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_outlined, color: Colors.purple),
+              title: const Text('Lihat Kartu & Tag QR'),
+              onTap: () async {
+                Navigator.pop(context);
+                final qrCode = goat['qr_code'] ?? goat['id'];
+                final url = Uri.parse('https://qandang.duckdns.org/catalog/$qrCode');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Hapus Ternak', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteGoat(context, goat);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _pickParent(BuildContext context, String gender, Function(int, String) onPicked) {
@@ -536,7 +591,11 @@ class _GoatListPageState extends State<GoatListPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 5,
+              itemBuilder: (context, i) => const ShimmerCard(),
+            )
           : _filteredGoats.isEmpty
               ? const Center(child: Text('Tidak ada data ternak.'))
               : RefreshIndicator(
@@ -550,55 +609,144 @@ class _GoatListPageState extends State<GoatListPage> {
                       if (goat['status'] == 'Sakit') statusColor = Colors.red;
                       if (goat['status'] == 'Perlu Vaksin') statusColor = Colors.orange;
 
-                      return Card(
-                        elevation: 0,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16), 
-                          side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
+                      return Dismissible(
+                        key: Key(goat['id'].toString()),
+                        direction: DismissDirection.horizontal,
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.startToEnd) {
+                            // Swipe Right -> Edit
+                            _showGoatForm(context, goat: goat);
+                            return false;
+                          } else {
+                            // Swipe Left -> Delete
+                            final deleteConfirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Hapus Data Ternak'),
+                                content: Text('Apakah Anda yakin ingin menghapus data kambing "${goat['name']}"?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                    child: const Text('HAPUS'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (deleteConfirm == true) {
+                              await _deleteGoat(context, goat);
+                              return true;
+                            }
+                            return false;
+                          }
+                        },
+                        background: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          alignment: Alignment.centerLeft,
+                          decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
+                          child: const Row(children: [Icon(Icons.edit, color: Colors.white), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(12),
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                            child: Icon(Icons.pets, color: statusColor),
+                        secondaryBackground: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          alignment: Alignment.centerRight,
+                          decoration: BoxDecoration(color: Colors.red.shade600, borderRadius: BorderRadius.circular(16)),
+                          child: const Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), SizedBox(width: 8), Icon(Icons.delete, color: Colors.white)]),
+                        ),
+                        child: Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16), 
+                            side: BorderSide(color: statusColor.withOpacity(0.3), width: 1.5)
                           ),
-                          title: Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () async {
+                              await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
+                              _refreshData();
+                            },
+                            onLongPress: () => _showActionBottomSheet(context, goat),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
                                 children: [
-                                  Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                    child: Icon(Icons.pets, color: statusColor),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(goat['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        const SizedBox(height: 4),
+                                        Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                        child: Text(goat['status'] ?? 'Sehat', style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                              PopupMenuButton<String>(
-                                onSelected: (val) {
-                                  if (val == 'edit') {
-                                    _showGoatForm(context, goat: goat);
-                                  } else if (val == 'delete') {
-                                    _deleteGoat(context, goat);
-                                  }
-                                },
-                                itemBuilder: (context) => const [
-                                  PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit')])),
-                                  PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, color: Colors.red, size: 18), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: Colors.red))])),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                          onTap: () async {
-                            await Navigator.push(context, MaterialPageRoute(builder: (_) => GoatDetailPage(id: goat['id'].toString())));
-                            _refreshData();
-                          },
                         ),
                       );
                     },
                   ),
                 ),
+    );
+  }
+}
+
+class ShimmerCard extends StatefulWidget {
+  const ShimmerCard({super.key});
+
+  @override
+  State<ShimmerCard> createState() => _ShimmerCardState();
+}
+
+class _ShimmerCardState extends State<ShimmerCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.3, end: 0.8).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
     );
   }
 }
