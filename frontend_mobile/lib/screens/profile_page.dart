@@ -8,14 +8,14 @@ import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
 import 'login_page.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   String _name = 'Peternak Qandang';
   String _email = 'peternak@qandang.com';
   String? _avatarUrl;
@@ -229,9 +229,14 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-                if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+                await ref.read(authStateProvider.notifier).logout();
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade50,

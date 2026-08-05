@@ -8,14 +8,17 @@ import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
 import 'goat_detail_page.dart';
 
-class GoatListPage extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/providers.dart';
+
+class GoatListPage extends ConsumerStatefulWidget {
   const GoatListPage({super.key});
 
   @override
-  State<GoatListPage> createState() => _GoatListPageState();
+  ConsumerState<GoatListPage> createState() => _GoatListPageState();
 }
 
-class _GoatListPageState extends State<GoatListPage> {
+class _GoatListPageState extends ConsumerState<GoatListPage> {
   List<dynamic> _allGoats = [];
   List<dynamic> _filteredGoats = [];
   String _searchQuery = '';
@@ -346,25 +349,34 @@ class _GoatListPageState extends State<GoatListPage> {
                           }
 
                           try {
-                            final res = isEdit 
-                                ? await ApiService.put('/goats/${goat!['id']}', body)
-                                : await ApiService.post('/goats', body);
-
-                            if (res.statusCode == 200 || res.statusCode == 201) {
-                              final updatedGoat = jsonDecode(res.body);
-                              await DbHelper.saveGoats([updatedGoat]);
+                            if (isEdit) {
+                              // Untuk edit tetap menggunakan pemrosesan langsung
+                              final res = await ApiService.put('/goats/${goat!['id']}', body);
+                              if (res.statusCode == 200 || res.statusCode == 201) {
+                                final updatedGoat = jsonDecode(res.body);
+                                await DbHelper.saveGoats([updatedGoat]);
+                                ref.read(goatListProvider.notifier).loadGoats(); // Refresh state
+                                try { Vibration.vibrate(duration: 80); } catch (_) {}
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data ternak diperbarui! 🐐')));
+                                  Navigator.pop(context);
+                                }
+                              } else {
+                                final err = jsonDecode(res.body);
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal menyimpan data')));
+                                setModalState(() => isSaving = false);
+                              }
+                            } else {
+                              // Menambahkan kambing baru menggunakan provider Riverpod
+                              await ref.read(goatListProvider.notifier).addGoat(body, base64Image);
                               try { Vibration.vibrate(duration: 80); } catch (_) {}
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'Data ternak diperbarui! 🐐' : 'Ternak berhasil didaftarkan! 🐐')));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ternak berhasil didaftarkan! 🐐')));
                                 Navigator.pop(context);
                               }
-                              _refreshData();
-                            } else {
-                              final err = jsonDecode(res.body);
-                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['message'] ?? 'Gagal menyimpan data')));
-                              setModalState(() => isSaving = false);
                             }
                           } catch (_) {
+                            // Offline Fallback untuk Edit/Tambah
                             final targetId = isEdit ? goat!['id'] : DateTime.now().millisecondsSinceEpoch;
                             final localGoat = {
                               'id': targetId,
@@ -376,8 +388,8 @@ class _GoatListPageState extends State<GoatListPage> {
                               'status': goat?['status'] ?? 'Sehat',
                               'note': body['description'],
                               'date_of_birth': body['birth_date'],
-                              'weight_logs': goat?['weight_logs'] ?? [],
-                              'health_records': goat?['health_records'] ?? [],
+                              'weight_logs': goat?['weight_logs'] ?? jsonEncode([]),
+                              'health_records': goat?['health_records'] ?? jsonEncode([]),
                               'dam_id': body['dam_id'],
                               'sire_id': body['sire_id'],
                             };
@@ -387,12 +399,12 @@ class _GoatListPageState extends State<GoatListPage> {
                               isEdit ? 'PUT' : 'POST',
                               body,
                             );
+                            ref.read(goatListProvider.notifier).loadGoats(); // Refresh state dari db lokal
                             try { Vibration.vibrate(duration: 80); } catch (_) {}
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline: Antrean disimpan di database lokal. 📡'), backgroundColor: Colors.orange));
                               Navigator.pop(context);
                             }
-                            _refreshData();
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -591,57 +603,61 @@ class _GoatListPageState extends State<GoatListPage> {
         foregroundColor: Colors.white,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-      body: _isLoading
-          ? ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 5,
-              itemBuilder: (context, i) => const ShimmerCard(),
-            )
-          : _filteredGoats.isEmpty
-              ? const Center(child: Text('Tidak ada data ternak.'))
-              : RefreshIndicator(
-                  onRefresh: _refreshData,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _filteredGoats.length,
-                    itemBuilder: (context, i) {
-                      final goat = _filteredGoats[i];
-                      Color statusColor = Colors.green;
-                      if (goat['status'] == 'Sakit') statusColor = Colors.red;
-                      if (goat['status'] == 'Perlu Vaksin') statusColor = Colors.orange;
+      body: ref.watch(goatListProvider).when(
+        data: (goats) {
+          // Lakukan filter data di UI secara real-time
+          final filtered = goats.where((goat) {
+            final matchesSearch = goat['name'].toLowerCase().contains(_searchQuery.toLowerCase()) || 
+                                 (goat['qr_code'] ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+            final matchesBreed = _filterBreed == 'Semua' || goat['breed'] == _filterBreed;
+            return matchesSearch && matchesBreed;
+          }).toList();
 
-                      return Dismissible(
-                        key: Key(goat['id'].toString()),
-                        direction: DismissDirection.horizontal,
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.startToEnd) {
-                            // Swipe Right -> Edit
-                            _showGoatForm(context, goat: goat);
-                            return false;
-                          } else {
-                            // Swipe Left -> Delete
-                            final deleteConfirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Hapus Data Ternak'),
-                                content: Text('Apakah Anda yakin ingin menghapus data kambing "${goat['name']}"?'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                                    child: const Text('HAPUS'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (deleteConfirm == true) {
-                              await _deleteGoat(context, goat);
-                              return true;
-                            }
-                            return false;
-                          }
-                        },
+          if (filtered.isEmpty) {
+            return const Center(child: Text('Tidak ada data ternak.'));
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => ref.read(goatListProvider.notifier).loadGoats(),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: filtered.length,
+              itemBuilder: (context, i) {
+                final goat = filtered[i];
+                Color statusColor = Colors.green;
+                if (goat['status'] == 'Sakit') statusColor = Colors.red;
+                if (goat['status'] == 'Perlu Vaksin') statusColor = Colors.orange;
+
+                return Dismissible(
+                  key: Key(goat['id'].toString()),
+                  direction: DismissDirection.horizontal,
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.startToEnd) {
+                      _showGoatForm(context, goat: goat);
+                      return false;
+                    } else {
+                      final deleteConfirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Hapus Data Ternak'),
+                          content: Text('Apakah Anda yakin ingin menghapus data kambing "${goat['name']}"?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                              child: const Text('HAPUS'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (deleteConfirm == true) {
+                        await ref.read(goatListProvider.notifier).deleteGoat(goat);
+                        return true;
+                      }
+                      return false;
+                    }
+                  },
                         background: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           alignment: Alignment.centerLeft,
@@ -717,7 +733,30 @@ class _GoatListPageState extends State<GoatListPage> {
                       );
                     },
                   ),
-                ),
+                );
+              },
+            ),
+          );
+        },
+        loading: () => ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: 5,
+          itemBuilder: (context, i) => const ShimmerCard(),
+        ),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Gagal memuat data: $err'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.read(goatListProvider.notifier).loadGoats(),
+                child: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/notification_service.dart';
 import 'services/app_services.dart';
 import 'screens/login_page.dart';
@@ -7,7 +7,11 @@ import 'screens/main_navigation.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
-  runApp(const QandangApp());
+  runApp(
+    const ProviderScope(
+      child: QandangApp(),
+    ),
+  );
 }
 
 class QandangApp extends StatelessWidget {
@@ -28,34 +32,31 @@ class QandangApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
   @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
 
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isLoading = true;
-  bool _isLoggedIn = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLogin();
-  }
-
-  _checkLogin() async {
-    final token = await ApiService.getToken();
-    setState(() {
-      _isLoggedIn = token != null;
-      _isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    return _isLoggedIn ? const MainNavigation() : const LoginPage();
+    return authState.when(
+      data: (isLoggedIn) => isLoggedIn ? const MainNavigation() : const LoginPage(),
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (err, stack) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error memuat status auth: $err'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.refresh(authStateProvider),
+                child: const Text('Coba Lagi'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

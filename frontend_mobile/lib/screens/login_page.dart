@@ -5,14 +5,17 @@ import 'package:local_auth/local_auth.dart';
 import '../services/app_services.dart';
 import 'main_navigation.dart';
 
-class LoginPage extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/providers.dart';
+
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
@@ -36,6 +39,7 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.setString('user_email', data['user']['email'] ?? '');
           await prefs.setString('user_avatar', data['user']['avatar_url'] ?? '');
         }
+        ref.read(authStateProvider.notifier).setLoggedIn(true);
         if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));
         }
@@ -74,6 +78,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (didAuthenticate && mounted) {
+        ref.read(authStateProvider.notifier).setLoggedIn(true);
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));
       }
     } catch (e) {
