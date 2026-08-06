@@ -25,7 +25,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove('token');
+    await prefs.remove('user_name');
+    await prefs.remove('user_email');
+    await prefs.remove('user_avatar');
     state = const AsyncValue.data(false);
   }
 

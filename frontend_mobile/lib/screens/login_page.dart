@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/app_services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'main_navigation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,12 +29,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _checkBiometricPreference();
   }
 
+  final _secureStorage = const FlutterSecureStorage();
+
   _checkBiometricPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final isEnabled = prefs.getBool('biometric_enabled') ?? false;
-    final token = prefs.getString('token');
+    final savedEmail = await _secureStorage.read(key: 'user_email');
+    final savedPassword = await _secureStorage.read(key: 'user_password');
     
-    if (isEnabled && token != null && token.isNotEmpty) {
+    // Aktifkan prompt biometrik jika toggle ON dan ada kredensial tersimpan
+    if (isEnabled && savedEmail != null && savedPassword != null) {
       setState(() {
         _biometricConfigured = true;
       });
@@ -57,6 +62,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         final data = jsonDecode(res.body);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', data['token']);
+        
+        // Simpan ke secure storage untuk keperluan biometrik
+        await _secureStorage.write(key: 'user_email', value: _emailController.text);
+        await _secureStorage.write(key: 'user_password', value: _passwordController.text);
+
         if (data['user'] != null) {
           await prefs.setString('user_name', data['user']['name'] ?? '');
           await prefs.setString('user_email', data['user']['email'] ?? '');
@@ -77,10 +87,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   _biometricLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final savedEmail = await _secureStorage.read(key: 'user_email');
+    final savedPassword = await _secureStorage.read(key: 'user_password');
     
-    if (token == null || token.isEmpty) {
+    if (savedEmail == null || savedPassword == null) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus login dengan password terlebih dahulu untuk mengaktifkan biometrik.')));
       return;
     }
@@ -101,11 +111,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
 
       if (didAuthenticate && mounted) {
-        ref.read(authStateProvider.notifier).setLoggedIn(true);
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));
+        setState(() => _loading = true);
+        
+        // Lakukan request login di belakang layar
+        final res = await ApiService.post('/login', {
+          'email': savedEmail,
+          'password': savedPassword,
+          'device_name': 'mobile_app',
+        });
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', data['token']);
+          if (data['user'] != null) {
+            await prefs.setString('user_name', data['user']['name'] ?? '');
+            await prefs.setString('user_email', data['user']['email'] ?? '');
+            await prefs.setString('user_avatar', data['user']['avatar_url'] ?? '');
+          }
+          ref.read(authStateProvider.notifier).setLoggedIn(true);
+          if (mounted) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigation()));
+          }
+        } else {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login biometrik gagal (Sesi kadaluarsa)')));
+        }
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Biometrik error: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
