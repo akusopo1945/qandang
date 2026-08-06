@@ -306,8 +306,50 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ],
         ),
+        ),
       ),
     );
+  }
+
+  Future<void> _exportCSVLocally() async {
+    final goats = ref.read(goatListProvider).value;
+    if (goats == null || goats.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data ternak untuk diekspor')));
+      return;
+    }
+
+    try {
+      final List<String> csvRows = [];
+      csvRows.add('ID,Nama,QR Code,Jenis,Kelamin,Bobot(kg),Status,Tanggal Lahir');
+      for (var goat in goats) {
+        final id = goat['id'];
+        final name = (goat['name'] ?? '').toString().replaceAll(',', ' ');
+        final qr = (goat['qr_code'] ?? '').toString().replaceAll(',', ' ');
+        final breed = (goat['breed'] ?? '').toString().replaceAll(',', ' ');
+        final gender = goat['gender'] == 'male' ? 'Jantan' : 'Betina';
+        final weight = goat['weight'] ?? 0.0;
+        final status = (goat['status'] ?? '').toString().replaceAll(',', ' ');
+        final dob = goat['date_of_birth'] ?? '';
+        csvRows.add('$id,$name,$qr,$breed,$gender,$weight,$status,$dob');
+      }
+      final csvString = csvRows.join('\n');
+
+      final directory = await getTemporaryDirectory();
+      final path = '\${directory.path}/data_ternak_qandang.csv';
+      final file = File(path);
+      await file.writeAsString(csvString);
+
+      if (mounted) {
+        final box = context.findRenderObject() as RenderBox?;
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: 'Data Ternak Qandang',
+          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal ekspor: $e')));
+    }
   }
 
   Widget _buildProfileMenu(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
@@ -598,47 +640,6 @@ class _BarnProfilePageState extends State<BarnProfilePage> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _saving = false);
-    }
-  }
-
-  Future<void> _exportCSVLocally() async {
-    final goats = ref.read(goatListProvider).value;
-    if (goats == null || goats.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data ternak untuk diekspor')));
-      return;
-    }
-
-    try {
-      final List<String> csvRows = [];
-      csvRows.add('ID,Nama,QR Code,Jenis,Kelamin,Bobot(kg),Status,Tanggal Lahir');
-      for (var goat in goats) {
-        final id = goat['id'];
-        final name = (goat['name'] ?? '').toString().replaceAll(',', ' ');
-        final qr = (goat['qr_code'] ?? '').toString().replaceAll(',', ' ');
-        final breed = (goat['breed'] ?? '').toString().replaceAll(',', ' ');
-        final gender = goat['gender'] == 'male' ? 'Jantan' : 'Betina';
-        final weight = goat['weight'] ?? 0.0;
-        final status = (goat['status'] ?? '').toString().replaceAll(',', ' ');
-        final dob = goat['date_of_birth'] ?? '';
-        csvRows.add('$id,$name,$qr,$breed,$gender,$weight,$status,$dob');
-      }
-      final csvString = csvRows.join('\n');
-
-      final directory = await getTemporaryDirectory();
-      final path = '${directory.path}/data_ternak_qandang.csv';
-      final file = File(path);
-      await file.writeAsString(csvString);
-
-      if (mounted) {
-        final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: 'Data Ternak Qandang',
-          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
-        );
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal ekspor: $e')));
     }
   }
 
