@@ -334,7 +334,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final csvString = csvRows.join('\n');
 
       final directory = await getTemporaryDirectory();
-      final path = '\${directory.path}/data_ternak_qandang.csv';
+      final path = '${directory.path}/data_ternak_qandang.csv';
       final file = File(path);
       await file.writeAsString(csvString);
 
@@ -736,8 +736,12 @@ class HelpSupportPage extends StatelessWidget {
                   subtitle: const Text('Respon cepat'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
-                    final url = Uri.parse('https://wa.me/6281234567890');
-                    if (await canLaunchUrl(url)) await launchUrl(url);
+                    final url = Uri.parse('https://wa.me/6282244994491');
+                    try {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal membuka WhatsApp')));
+                    }
                   },
                 ),
                 const Divider(height: 1),
@@ -748,7 +752,11 @@ class HelpSupportPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     final url = Uri.parse('mailto:support@qandang.com');
-                    if (await canLaunchUrl(url)) await launchUrl(url);
+                    try {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal membuka aplikasi Email')));
+                    }
                   },
                 ),
               ],
