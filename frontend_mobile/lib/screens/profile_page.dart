@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -275,10 +277,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               context,
               icon: Icons.file_download_outlined,
               label: 'Ekspor Data Ternak (CSV)',
-              onTap: () async {
-                final url = Uri.parse('${ApiService.baseUrl}/export/goats');
-                if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
-              },
+              onTap: _exportCSVLocally,
             ),
             _buildProfileMenu(context, icon: Icons.help_outline, label: 'Bantuan & Dukungan', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportPage()))),
             _buildProfileMenu(context, icon: Icons.description_outlined, label: 'Panduan Pengguna', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManualPage()))),
@@ -593,12 +592,53 @@ class _BarnProfilePageState extends State<BarnProfilePage> {
           Navigator.pop(context);
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memperbarui profil kandang')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memperbarui profil')));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _exportCSVLocally() async {
+    final goats = ref.read(goatListProvider).value;
+    if (goats == null || goats.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data ternak untuk diekspor')));
+      return;
+    }
+
+    try {
+      final List<String> csvRows = [];
+      csvRows.add('ID,Nama,QR Code,Jenis,Kelamin,Bobot(kg),Status,Tanggal Lahir');
+      for (var goat in goats) {
+        final id = goat['id'];
+        final name = (goat['name'] ?? '').toString().replaceAll(',', ' ');
+        final qr = (goat['qr_code'] ?? '').toString().replaceAll(',', ' ');
+        final breed = (goat['breed'] ?? '').toString().replaceAll(',', ' ');
+        final gender = goat['gender'] == 'male' ? 'Jantan' : 'Betina';
+        final weight = goat['weight'] ?? 0.0;
+        final status = (goat['status'] ?? '').toString().replaceAll(',', ' ');
+        final dob = goat['date_of_birth'] ?? '';
+        csvRows.add('$id,$name,$qr,$breed,$gender,$weight,$status,$dob');
+      }
+      final csvString = csvRows.join('\n');
+
+      final directory = await getTemporaryDirectory();
+      final path = '${directory.path}/data_ternak_qandang.csv';
+      final file = File(path);
+      await file.writeAsString(csvString);
+
+      if (mounted) {
+        final box = context.findRenderObject() as RenderBox?;
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: 'Data Ternak Qandang',
+          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal ekspor: $e')));
     }
   }
 
@@ -667,21 +707,63 @@ class HelpSupportPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bantuan & Dukungan')),
+      appBar: AppBar(title: const Text('Bantuan & Dukungan', style: TextStyle(fontWeight: FontWeight.bold))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          ListTile(leading: const Icon(Icons.help_center_outlined), title: const Text('Pusat Bantuan'), onTap: () {}),
-          ListTile(leading: const Icon(Icons.contact_support_outlined), title: const Text('Hubungi Kami'), onTap: () {}),
-          const Divider(),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: const Color(0xFF4A6741).withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+            child: const Column(
+              children: [
+                Icon(Icons.support_agent, size: 60, color: Color(0xFF4A6741)),
+                SizedBox(height: 12),
+                Text('Ada pertanyaan atau kendala?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4A6741))),
+                SizedBox(height: 4),
+                Text('Tim dukungan kami siap membantu Anda 24/7.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const CircleAvatar(backgroundColor: Colors.blue, child: Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20)),
+                  title: const Text('Chat WhatsApp'),
+                  subtitle: const Text('Respon cepat'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final url = Uri.parse('https://wa.me/6281234567890');
+                    if (await canLaunchUrl(url)) await launchUrl(url);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(backgroundColor: Colors.orange, child: Icon(Icons.email_outlined, color: Colors.white, size: 20)),
+                  title: const Text('Email Dukungan'),
+                  subtitle: const Text('support@qandang.com'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final url = Uri.parse('mailto:support@qandang.com');
+                    if (await canLaunchUrl(url)) await launchUrl(url);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('FAQ Singkat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          const ExpansionTile(
+            title: Text('Bagaimana cara kerja fitur offline?'),
+            children: [Padding(padding: EdgeInsets.all(16), child: Text('Semua perubahan akan disimpan di perangkat Anda saat tidak ada internet. Ketika koneksi tersedia, aplikasi akan menyinkronkannya secara otomatis ke server.', style: TextStyle(color: Colors.grey)))],
+          ),
           const ExpansionTile(
             title: Text('Bagaimana cara scan QR?'),
-            children: [
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Tekan tombol QR di pojok kanan bawah beranda untuk memindai kode QR ternak.'),
-              )
-            ],
+            children: [Padding(padding: EdgeInsets.all(16), child: Text('Buka halaman "Ternak", lalu klik tombol QR di bagian atas untuk memindai kode QR kambing.', style: TextStyle(color: Colors.grey)))],
           )
         ],
       ),
@@ -694,18 +776,63 @@ class UserManualPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Panduan Pengguna')),
+      appBar: AppBar(title: const Text('Panduan Pengguna', style: TextStyle(fontWeight: FontWeight.bold))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('1. Registrasi Ternak', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
-          const Text('Buka menu Ternak, klik tombol Tambah Ternak, isi data silsilah dan data diri ternak, lalu simpan.'),
-          const SizedBox(height: 20),
-          const Text('2. Analisis AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
-          const Text('Buka detail kambing dari daftar ternak, lalu klik tombol JALANKAN ANALISIS & FORECAST.'),
+          _buildManualCard(
+            title: '1. Registrasi Ternak Baru',
+            icon: Icons.add_circle_outline,
+            description: 'Buka menu Ternak, klik ikon ➕. Isi biodata ternak termasuk silsilah indukan, jenis, kelmin, dan bobot awal. Anda juga bisa langsung memindai QR Tag baru.',
+          ),
+          _buildManualCard(
+            title: '2. Pemantauan & Sinkronisasi',
+            icon: Icons.sync,
+            description: 'Aplikasi bekerja 100% offline. Anda dapat mengedit dan menghapus ternak di lapangan tanpa sinyal. Cek antrean sync di halaman profil.',
+          ),
+          _buildManualCard(
+            title: '3. Prediksi Pertumbuhan AI',
+            icon: Icons.auto_graph,
+            description: 'Di halaman Detail Ternak, klik "Jalankan Analisis & Forecast" untuk melihat prediksi bobot 30 hari ke depan menggunakan model kecerdasan buatan.',
+          ),
+          _buildManualCard(
+            title: '4. Ekspor Data Ternak',
+            icon: Icons.download_outlined,
+            description: 'Gunakan fitur Ekspor CSV di profil untuk mengunduh seluruh data ternak Anda dalam format Excel/CSV yang siap dikirim via WhatsApp.',
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildManualCard({required String title, required IconData icon, required String description}) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFF4A6741).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: const Color(0xFF4A6741)),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 6),
+                  Text(description, style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.4)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
