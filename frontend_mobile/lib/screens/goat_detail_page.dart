@@ -695,32 +695,6 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
       },
     );
   }
-}
-
-class _AIPredictionCard extends StatefulWidget {
-  final String goatId;
-  const _AIPredictionCard({required this.goatId});
-
-  @override
-  State<_AIPredictionCard> createState() => _AIPredictionCardState();
-}
-
-class _AIPredictionCardState extends State<_AIPredictionCard> {
-  bool _loading = false;
-
-  _runAnalysis() async {
-    setState(() => _loading = true);
-    try {
-      final res = await ApiService.get('/goats/${widget.goatId}/predict');
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => AIPredictionPage(predictionData: data)));
-      }
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menjalankan analisis AI')));
-    }
-    setState(() => _loading = false);
-  }
 
   void _showDigitalIDCard(Map<String, dynamic> goat) {
     final qrCode = goat['qr_code'] ?? goat['id'];
@@ -805,6 +779,32 @@ class _AIPredictionCardState extends State<_AIPredictionCard> {
         );
       }
     );
+  }
+}
+
+class _AIPredictionCard extends StatefulWidget {
+  final String goatId;
+  const _AIPredictionCard({required this.goatId});
+
+  @override
+  State<_AIPredictionCard> createState() => _AIPredictionCardState();
+}
+
+class _AIPredictionCardState extends State<_AIPredictionCard> {
+  bool _loading = false;
+
+  _runAnalysis() async {
+    setState(() => _loading = true);
+    try {
+      final res = await ApiService.get('/goats/${widget.goatId}/predict');
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => AIPredictionPage(predictionData: data)));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menjalankan analisis AI')));
+    }
+    setState(() => _loading = false);
   }
 
   @override

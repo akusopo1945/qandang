@@ -66,7 +66,7 @@ class _DashboardPageState extends State<DashboardPage> {
     upcoming.sort((a, b) => a['date'].compareTo(b['date']));
     
     // Check pending sync items
-    final db = await DbHelper.database;
+    final db = await DbHelper.db;
     final queue = await db.query('sync_queue');
     final pendingSync = queue.length;
     
