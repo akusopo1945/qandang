@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'feed_calculator_page.dart';
 import '../services/app_services.dart';
 import '../widgets/premium_image.dart';
@@ -363,13 +366,7 @@ class _GoatDetailPageState extends State<GoatDetailPage> {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () async {
-                  final qrCode = goat['qr_code'] ?? goat['id'];
-                  final url = Uri.parse('https://qandang.duckdns.org/catalog/$qrCode');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                  }
-                },
+                onPressed: () => _showDigitalIDCard(goat),
                 icon: const Icon(Icons.qr_code, size: 18),
                 label: const Text('Kartu & QR Tag', style: TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(
@@ -723,6 +720,91 @@ class _AIPredictionCardState extends State<_AIPredictionCard> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal menjalankan analisis AI')));
     }
     setState(() => _loading = false);
+  }
+
+  void _showDigitalIDCard(Map<String, dynamic> goat) {
+    final qrCode = goat['qr_code'] ?? goat['id'];
+    final catalogUrl = 'https://qandang.duckdns.org/catalog/$qrCode';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.pop(context),
+          child: GestureDetector(
+            onTap: () {}, // Mencegah tap diteruskan ke parent sehingga bottom sheet tidak tertutup
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+                  const SizedBox(height: 24),
+                  const Text('KARTU IDENTITAS TERNAK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey, letterSpacing: 1.5)),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [const Color(0xFF4A6741), Colors.green.shade800]),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(radius: 30, backgroundColor: Colors.white24, child: const Icon(Icons.pets, color: Colors.white, size: 30)),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(goat['name'] ?? 'Kambing', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                              Text('${goat['breed'] ?? '-'} • ${goat['gender'] == 'male' ? 'Jantan' : 'Betina'}', style: const TextStyle(color: Colors.white70)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  GestureDetector(
+                    onLongPress: () async {
+                      await Clipboard.setData(ClipboardData(text: catalogUrl));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tautan QR disalin ke papan klip!')));
+                      }
+                      await Share.share('Lihat detail ternak ${goat['name']} di sini:\n$catalogUrl');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200, width: 2)),
+                      child: QrImageView(
+                        data: catalogUrl,
+                        version: QrVersions.auto,
+                        size: 200.0,
+                        backgroundColor: Colors.white,
+                        eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF4A6741)),
+                        dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF4A6741)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Tekan dan Tahan QR Code untuk Membagikan Tautan', style: TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    );
   }
 
   @override
