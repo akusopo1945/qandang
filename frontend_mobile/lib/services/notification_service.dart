@@ -18,6 +18,10 @@ class NotificationService {
     );
 
     await _notifications.initialize(initializationSettings);
+    
+    // Meminta izin untuk Android 13+
+    await _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+    await _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestExactAlarmsPermission();
   }
 
   static Future<void> showNotification(int id, String title, String body) async {

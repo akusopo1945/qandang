@@ -756,42 +756,90 @@ class AIPredictionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Analisis AI Qandang'), backgroundColor: Colors.purple.shade700, foregroundColor: Colors.white),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('GRAFIK FORECAST PERTUMBUHAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
-            const SizedBox(height: 20),
-            Container(
-              height: 200, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
-              child: LineChart(LineChartData(
-                gridData: const FlGridData(show: true, drawVerticalLine: false),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
-                  bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (val, meta) => val == 0 ? const Text('Skrg', style: TextStyle(fontSize: 10)) : val == 1 ? const Text('Bulan Dpn', style: TextStyle(fontSize: 10)) : const SizedBox())),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      appBar: AppBar(
+        title: const Text('AI Insights 🧠', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.purple.shade900,
+      ),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.purple.shade50, Colors.white]),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('FORECAST PERTUMBUHAN (30 HARI)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple, letterSpacing: 1.2)),
+                const SizedBox(height: 16),
+                Container(
+                  height: 220,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: Colors.purple.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: LineChart(LineChartData(
+                    gridData: const FlGridData(show: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (val, meta) => val == 0 ? const Text('Sekarang', style: TextStyle(fontSize: 11, color: Colors.grey)) : val == 1 ? const Text('+30 Hari', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)) : const SizedBox())),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [LineChartBarData(
+                      spots: [FlSpot(0, (predictionData['current_weight'] as num).toDouble()), FlSpot(1, (predictionData['predicted_weight_next_month'] as num).toDouble())],
+                      isCurved: true,
+                      color: Colors.purple.shade400,
+                      barWidth: 5,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: true),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(colors: [Colors.purple.withOpacity(0.3), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                      ),
+                    )],
+                  )),
                 ),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [LineChartBarData(spots: [FlSpot(0, (predictionData['current_weight'] as num).toDouble()), FlSpot(1, (predictionData['predicted_weight_next_month'] as num).toDouble())], isCurved: false, color: Colors.purple, barWidth: 4, isStrokeCapRound: true, dotData: const FlDotData(show: true), belowBarData: BarAreaData(show: true, color: Colors.purple.withOpacity(0.1)))],
-              )),
+                const SizedBox(height: 32),
+                const Text('ANALISIS & REKOMENDASI AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple, letterSpacing: 1.2)),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [Colors.purple.shade900, Colors.purple.shade700]),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: Colors.purple.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Health Score', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                            child: Text('${(predictionData['confidence_score'] * 100).toInt()}/100', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          ),
+                        ],
+                      ),
+                      const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Colors.white24, height: 1)),
+                      Text(predictionData['analysis'] ?? 'Gagal memuat analisis.', style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
-            const Text('DETAIL ANALISIS & REKOMENDASI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey, letterSpacing: 1)),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.purple.shade100)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Skor Kesehatan', style: TextStyle(fontWeight: FontWeight.bold)), Text('${(predictionData['confidence_score'] * 100).toInt()}/100', style: TextStyle(color: Colors.purple.shade700, fontWeight: FontWeight.bold, fontSize: 20))]),
-                  const Divider(height: 32),
-                  Text(predictionData['analysis'] ?? 'Gagal memuat analisis.', style: const TextStyle(fontSize: 15, height: 1.6)),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

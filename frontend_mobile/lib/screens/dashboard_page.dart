@@ -19,6 +19,7 @@ class _DashboardPageState extends State<DashboardPage> {
   int _totalGoats = 0;
   double _weighingProgress = 0.0;
   int _weighedCount = 0;
+  int _pendingSyncCount = 0;
 
   @override
   void initState() {
@@ -64,6 +65,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
     upcoming.sort((a, b) => a['date'].compareTo(b['date']));
     
+    // Check pending sync items
+    final db = await DbHelper.database;
+    final queue = await db.query('sync_queue');
+    final pendingSync = queue.length;
+    
     // Sync local notifications for health reminders
     await NotificationService.syncAllReminders();
     
@@ -72,6 +78,7 @@ class _DashboardPageState extends State<DashboardPage> {
       _totalGoats = goats.length;
       _weighedCount = weighedThisWeek;
       _weighingProgress = _totalGoats > 0 ? _weighedCount / _totalGoats : 0.0;
+      _pendingSyncCount = pendingSync;
     });
   }
 
@@ -100,6 +107,36 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_pendingSyncCount > 0)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.cloud_sync, color: Colors.orange.shade700),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '$_pendingSyncCount data menunggu sinkronisasi internet',
+                          style: TextStyle(color: Colors.orange.shade900, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.refresh, color: Colors.orange.shade700),
+                        onPressed: () async {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Menyinkronkan...')));
+                          await DbHelper.processQueue();
+                          _loadDashboardData();
+                        },
+                      )
+                    ],
+                  ),
+                ),
               const Text('Halo, Peternak! 👋', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const Text('Bagaimana kondisi kandang hari ini?', style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 24),
